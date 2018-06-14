@@ -7,7 +7,20 @@ from bhmm import lag_observations
 from information import ctwalgorithm
 
 
-def compute_DI_MI_E4(X, Y, D=-1, msmlag=-1):
+class JiaoI4:
+    def __init__(self):
+        pass
+    def stationary_estimate(self, A, B, p_estimator):
+        return compute_DI_MI_E4_imsm(A, B, p_estimator.msmlag,
+                                     tmat_x=p_estimator.tmat_x,
+                                     tmat_y=p_estimator.tmat_y,
+                                     tmat_xy=p_estimator.tmat_xy)
+
+    def nonstationary_estimate(self, A, B, p_estimator):
+        return compute_DI_MI_E4(A, B, D=p_estimator.D)
+
+
+def compute_DI_MI_E4(X, Y, D=-1):
     # Function `compute_DI_MI' calculates the directed information I(X^n-->
     # Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
     # for any positive integer n smaller than the length of X and Y.
@@ -28,8 +41,6 @@ def compute_DI_MI_E4(X, Y, D=-1, msmlag=-1):
     # the estimated results, for example, if start_ratio = 0.2, then the output DI
     # only contains the estimate of I(X^n \to Y^n) for n larger than
     # length(X)/5.
-    if D == -1 and msmlag == -1:
-        raise UserWarning('Choose between CTW or MSM probability estimation.')
 
     n_data = len(X)
     if len(set(X)) == 1 or  len(set(Y)) == 1:
@@ -102,26 +113,7 @@ def compute_DI_MI_E4_imsm(X, Y, msmlag=1, reversible=True, tmat_x=None, tmat_y=N
     if Nx == 2 and Ny == 2:
         assert set(np.concatenate(X)) == {0, 1}
         assert set(np.concatenate(Y)) == {0, 1}
-        if tmat_x is None:
-            if not tmat_ck_estimate:
-                tmat_x = pyemma.msm.estimate_markov_model(X, msmlag, reversible=reversible).transition_matrix
-            else:
-                tmat_x = np.linalg.matrix_power(pyemma.msm.estimate_markov_model(X, 1, reversible=reversible).transition_matrix, msmlag)
-        if tmat_y is None:
-            if not tmat_ck_estimate:
-                tmat_y = pyemma.msm.estimate_markov_model(Y, msmlag, reversible=reversible).transition_matrix
-            else:
-                tmat_y = np.linalg.matrix_power(pyemma.msm.estimate_markov_model(Y, 1, reversible=reversible).transition_matrix, msmlag)
-        if tmat_xy is None:
-            if not tmat_ck_estimate:
-                tmat_xy = pyemma.msm.estimate_markov_model([_x + 2 * _y for _x, _y in zip(X, Y)],
-                                                           msmlag, reversible=reversible).transition_matrix
-            else:
-                tmat_xy = np.linalg.matrix_power(pyemma.msm.estimate_markov_model([_x + 2 * _y for _x, _y in zip(X, Y)],
-                                                           1, reversible=reversible).transition_matrix, msmlag)
-        if not tmat_x.shape[0] * tmat_y.shape[0] == tmat_xy.shape[0]:
-            print(tmat_x.shape, tmat_y.shape, tmat_xy.shape)
-            raise NotImplementedError('Combined model is not showing all combinatorial states. Try non-reversible?')
+
 
         x_lagged = lag_observations(X, msmlag)
         y_lagged = lag_observations(Y, msmlag)
