@@ -8,4 +8,4 @@ setup(name='information',
       zip_safe=False,
       install_requires=['numpy'],
       test_suite='py.test',
-      tests_require=['py.test'])
+      tests_require=['pytest'])
