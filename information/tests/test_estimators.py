@@ -20,9 +20,8 @@ class TestSuperSimple(unittest.TestCase):
         B = np.random.randint(0, 2, 100)
         prob_est.estimate(A, B)
 
-        info_est_instance = information.JiaoI4(prob_est)
+        estimator = information.JiaoI4(prob_est)
 
-        estimator = information.Information(prob_est, info_est_instance)
         estimator.estimate(A, B)
 
         self.assertGreaterEqual(estimator.d, 0)

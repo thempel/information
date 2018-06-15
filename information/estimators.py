@@ -9,6 +9,16 @@ from information import ctwalgorithm
 class Estimator(object):
     def __init__(self, probability_estimator):
         self.p_estimator = probability_estimator
+        self.d, self.r, self.m = None, None, None
+
+    def estimate(self, A, B):
+
+        if self.p_estimator.is_stationary_estimate:
+            self.d, self.r, self.m = self.stationary_estimate(A, B)
+        else:
+            self.d, self.r, self.m = self.nonstationary_estimate(A, B)
+
+        return self
 
     def _stationary_estimator(self, a, b, c, d, e, f):
         raise NotImplementedError(
