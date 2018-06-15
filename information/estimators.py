@@ -1,22 +1,71 @@
 import itertools
 
 import numpy as np
-import pyemma
 from bhmm import lag_observations
 
 from information import ctwalgorithm
 
 
-class JiaoI4:
+class Estimator(object):
     def __init__(self, probability_estimator):
         self.p_estimator = probability_estimator
 
+    def _stationary_estimator(self, a, b, c, d, e, f):
+        raise NotImplementedError(
+            'You need to overload the _stationary_estimator() method in your Estimator implementation!')
+
+    def _nonstationary_estimator(self, a, b, D=None):
+        raise NotImplementedError(
+            'You need to overload the _nonstationary_estimator() method in your Estimator implementation!')
+
+    def stationary_estimate(self, X, Y):
+        """
+        Directed information computation on discrete trajectories with Markov model
+        probability estimates. Convenience function that returns directed information estimates
+        from given estimator.
+
+        :param X: Time-series 1
+        :param Y: Time-series 2
+        :param msmlag: MSM lag time
+        :param reversible: MSM estimator type
+        :return: di, rdi, mi
+        """
+        msmlag = self.p_estimator.msmlag
+
+        tmat_x = self.p_estimator.tmat_x
+        tmat_y = self.p_estimator.tmat_y
+        tmat_xy = self.p_estimator.tmat_xy
+
+        if not isinstance(X, list): X = [X]
+        if not isinstance(Y, list): Y = [Y]
+        assert isinstance(X[0], np.ndarray)
+        assert isinstance(Y[0], np.ndarray)
+
+        for a1, a2 in zip(X, Y):
+            if a1.shape[0] != a2.shape[0]:
+                print(a1.shape, a2.shape)
+                print('something wrong with traj lengths')
+                return
+
+        assert np.unique(X).max() == tmat_x.shape[0] - 1 and np.unique(X).min() == 0
+        assert np.unique(Y).max() == tmat_y.shape[0] - 1 and np.unique(Y).min() == 0
+
+        x_lagged = lag_observations(X, msmlag)
+        y_lagged = lag_observations(Y, msmlag)
+
+        di, rev_di, mi = self._stationary_estimator(x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag)
+
+        return di, rev_di, mi
 
     def nonstationary_estimate(self, A, B):
-        return self.compute_DI_MI_E4(A, B, D=self.p_estimator.D)
+        return self._nonstationary_estimator(A, B, D=self.p_estimator.D)
 
 
-    def compute_DI_MI_E4(X, Y, D=-1):
+class JiaoI4(Estimator):
+    def __init__(self, probability_estimator):
+        super(JiaoI4, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, X, Y, D=-1):
         # Function `compute_DI_MI' calculates the directed information I(X^n-->
         # Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
         # for any positive integer n smaller than the length of X and Y.
@@ -72,101 +121,57 @@ class JiaoI4:
 
         return np.cumsum(temp_DI)
 
-
-    def stationary_estimate(self, X, Y):
+    def _stationary_estimator(self, x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag):
         """
-        Directed information computation on discrete trajectories with Markov model
-        probability estimates. Convenience function that compares single state binary
-        trajectories, i.e. returns directed information estimates from microstate i to j.
+        Implementation of directed information estimator I4 from [1] using Markov model
+        probability estimates.
 
-        Returns directed information, reverse directed information and mutual information
-        as defined by Jiao et al, 2013.
-
-        :param X: Time-series 1
-        :param Y: Time-series 2
-        :param msmlag: MSM lag time
-        :param reversible: MSM estimator type
-        :return: di, rdi, mi
+        [1] Jiao et al, Universal Estimation of Directed Information, 2013.
+        :param x_lagged: List of binary trajectories 1 with time step msmlag.
+        :param y_lagged: List of binary trajectories 2 with time step msmlag.
+        :param mmx: Markov model of binary trajectory 1
+        :param mmy: Markov model of binary trajectory 2
+        :param mmxy: Markov model of binary trajectory 1&2, x +2 * y state assignment
+        :param msmlag: Markov model lag time
+        :return: directed information, reverse directed information, mutual information
         """
-        msmlag = self.p_estimator.msmlag
-
-        tmat_x = self.p_estimator.tmat_x
-        tmat_y = self.p_estimator.tmat_y
-        tmat_xy = self.p_estimator.tmat_xy
-
-        if not isinstance(X, list): X = [X]
-        if not isinstance(Y, list): Y = [Y]
-        assert isinstance(X[0], np.ndarray)
-        assert isinstance(Y[0], np.ndarray)
-
-        for a1, a2 in zip(X, Y):
-            if a1.shape[0] != a2.shape[0]:
-                print(a1.shape, a2.shape)
-                print('something wrong with traj lengths')
-                return
-
-        assert np.unique(X).max() == tmat_x.shape[0] - 1 and np.unique(X).min() == 0
-        assert np.unique(Y).max() == tmat_y.shape[0] - 1 and np.unique(Y).min() == 0
-
-        x_lagged = lag_observations(X, msmlag)
-        y_lagged = lag_observations(Y, msmlag)
-
-        di, rev_di, mi = _directed_information_estimator(x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag)
-
-        return di, rev_di, mi
+        Nx = np.unique(x_lagged).max() + 1
+        Ny = np.unique(y_lagged).max() + 1
 
 
-def _directed_information_estimator(x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag):
-    """
-    Implementation of directed information estimator I4 from [1] using Markov model
-    probability estimates.
+        # iterate over time-lagged trajectory pairs
+        d, r, m = 0., 0., 0.
+        for ix_time_tau, iy_time_tau in zip(x_lagged, y_lagged):
+            ixy_time_tau = ix_time_tau + Nx * iy_time_tau
 
-    [1] Jiao et al, Universal Estimation of Directed Information, 2013.
-    :param x_lagged: List of binary trajectories 1 with time step msmlag.
-    :param y_lagged: List of binary trajectories 2 with time step msmlag.
-    :param mmx: Markov model of binary trajectory 1
-    :param mmy: Markov model of binary trajectory 2
-    :param mmxy: Markov model of binary trajectory 1&2, x +2 * y state assignment
-    :param msmlag: Markov model lag time
-    :return: directed information, reverse directed information, mutual information
-    """
-    Nx = np.unique(x_lagged).max() + 1
-    Ny = np.unique(y_lagged).max() + 1
+            # compute probability trajectories from state x_{i-1} to any possible state x_i
+            px = tmat_x[ix_time_tau, :]
+            py = tmat_y[iy_time_tau, :]
+            pxy = tmat_xy[ixy_time_tau, :]
 
+            prob_xi_to_xip1_given_yi = np.zeros((Nx, Nx, Ny))
+            for xi, xip1, yi in itertools.product(*[range(Nx), range(Nx), range(Ny)]):
+                prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + Nx * yi, xip1 + Nx * _y] for _y in range(Ny)])
 
-    # iterate over time-lagged trajectory pairs
-    d, r, m = 0., 0., 0.
-    for indicator_state_i_x_time_tau, indicator_state_i_y_time_tau in zip(x_lagged, y_lagged):
-        indicator_state_i_xy_time_tau = indicator_state_i_x_time_tau + Nx * indicator_state_i_y_time_tau
+            px_given_y = prob_xi_to_xip1_given_yi[ix_time_tau, :, iy_time_tau]
 
-        # compute probability trajectories from state x_{i-1} to any possible state x_i
-        px = tmat_x[indicator_state_i_x_time_tau, :]
-        py = tmat_y[indicator_state_i_y_time_tau, :]
-        pxy = tmat_xy[indicator_state_i_xy_time_tau, :]
+            temp_mi, temp_di, temp_rev_di = np.zeros(len(ix_time_tau)), np.zeros(
+                len(ix_time_tau)), np.zeros(len(ix_time_tau))
 
-        prob_xi_to_xip1_given_yi = np.zeros((Nx, Nx, Ny))
-        for xi, xip1, yi in itertools.product(*[range(Nx), range(Nx), range(Ny)]):
-            prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + Nx * yi, xip1 + Nx * _y] for _y in range(Ny)])
+            for iy in range(Ny):  # ix, iy now iterating over indicator states, not original state numbers
+                for ix in range(Nx):
+                    pidx = pxy[:, ix + iy * Nx] > 0  # def 0 * log(0) := 0
+                    temp_mi[pidx] = temp_mi[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
+                        pxy[pidx, ix + iy * Nx] / (py[pidx, iy] * px[pidx, ix]))
+                    temp_di[pidx] = temp_di[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
+                        pxy[pidx, ix + iy * Nx] / (py[pidx, iy] * px_given_y[pidx, ix]))
+                    temp_rev_di[pidx] = temp_rev_di[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
+                        px_given_y[pidx, ix] / px[pidx, ix])
+            d += temp_di.mean() / msmlag
+            r += temp_rev_di.mean() / msmlag
+            m += temp_mi.mean() / msmlag
 
-        px_given_y = prob_xi_to_xip1_given_yi[indicator_state_i_x_time_tau, :, indicator_state_i_y_time_tau]
-
-        temp_mi, temp_di, temp_rev_di = np.zeros(len(indicator_state_i_x_time_tau)), np.zeros(
-            len(indicator_state_i_x_time_tau)), np.zeros(len(indicator_state_i_x_time_tau))
-
-        for iy in range(Ny):  # ix, iy now iterating over indicator states, not original state numbers
-            for ix in range(Nx):
-                pidx = pxy[:, ix + iy * Nx] > 0  # def 0 * log(0) := 0
-                temp_mi[pidx] = temp_mi[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
-                    pxy[pidx, ix + iy * Nx] / (py[pidx, iy] * px[pidx, ix]))
-                temp_di[pidx] = temp_di[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
-                    pxy[pidx, ix + iy * Nx] / (py[pidx, iy] * px_given_y[pidx, ix]))
-                temp_rev_di[pidx] = temp_rev_di[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
-                    px_given_y[pidx, ix] / px[pidx, ix])
-        d += temp_di.mean() / msmlag
-        r += temp_rev_di.mean() / msmlag
-        m += temp_mi.mean() / msmlag
-
-    return d, r, m
+        return d, r, m
 
 
 def dir_info(A, B, msmlag, reversible=True):
