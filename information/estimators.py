@@ -5,11 +5,24 @@ from bhmm import lag_observations
 
 
 class Estimator(object):
+    """ Base class for directed information estimators
+
+    """
     def __init__(self, probability_estimator):
+        """
+
+        :param probability_estimator: information.ProbabilityEstimator class
+        """
         self.p_estimator = probability_estimator
         self.d, self.r, self.m = None, None, None
 
     def estimate(self, A, B):
+        """
+        Convenience function for directed, reverse directed estimation.
+        :param A: time series A
+        :param B: time series B
+        :return: self
+        """
 
         if self.p_estimator.is_stationary_estimate:
             self.d, self.r, self.m = self.stationary_estimate(A, B)
@@ -18,24 +31,21 @@ class Estimator(object):
 
         return self
 
-    def _stationary_estimator(self, a, b, c, d, e, f):
+    def _stationary_estimator(self, a, b):
         raise NotImplementedError(
             'You need to overload the _stationary_estimator() method in your Estimator implementation!')
 
-    def _nonstationary_estimator(self, a, b, D=None):
+    def _nonstationary_estimator(self, a, b):
         raise NotImplementedError(
             'You need to overload the _nonstationary_estimator() method in your Estimator implementation!')
 
     def stationary_estimate(self, X, Y):
         """
-        Directed information computation on discrete trajectories with Markov model
-        probability estimates. Convenience function that returns directed information estimates
-        from given estimator.
+        Directed information estimation on discrete trajectories with Markov model
+        probability estimates.
 
         :param X: Time-series 1
         :param Y: Time-series 2
-        :param msmlag: MSM lag time
-        :param reversible: MSM estimator type
         :return: di, rdi, mi
         """
         msmlag = self.p_estimator.msmlag
@@ -61,44 +71,61 @@ class Estimator(object):
         x_lagged = lag_observations(X, msmlag)
         y_lagged = lag_observations(Y, msmlag)
 
-        di, rev_di, mi = self._stationary_estimator(x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag)
+        di, rev_di, mi = self._stationary_estimator(x_lagged, y_lagged)
 
         return di, rev_di, mi
 
     def nonstationary_estimate(self, A, B):
-        return self._nonstationary_estimator(A, B, D=self.p_estimator.D)
+        """
+        Directed information estimation using non-stationary probability assignments.
+        :param A: Time series 1
+        :param B: Time series 2
+        :return:
+        """
+        di, rev_di, mi =  self._nonstationary_estimator(A, B)
+        return di, rev_di, mi
 
 
 class JiaoI4(Estimator):
     def __init__(self, probability_estimator):
         super(JiaoI4, self).__init__(probability_estimator)
 
-    def _nonstationary_estimator(self, X, Y, D=-1):
-        # Function `compute_DI_MI' calculates the directed information I(X^n-->
-        # Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
-        # for any positive integer n smaller than the length of X and Y.
+    def _nonstationary_estimator(self, X, Y):
+        """
+        Original estimator I4 from Jiao et al. Original docstring:
 
-        # X and Y: two input sequences;
-        # Nx:  the size of alphabet of X, assuming X and Y have the same size of
-        # alphabets;
-        # D:  the maximum depth of the context tree used in basic CTW algorithm,
-        # for references please see F. Willems, Y. Shtarkov and T. Tjalkens, 'The
-        # Context-Tree Weighting Method: Basic Properties', IEEE Transactions on
-        # Information Theory, 653-664, May 1995.
-        # alg:  indicates one of the four possible estimators proposed in J.
-        # Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
-        # Estimation of Directed Information', http://arxiv.org/abs/1201.2334.
-        # Users can indicate strings 'E1','E2','E3' and 'E4' for corresponding
-        # estimators.
-        # start_ratio: indicates how large initial proportion of input data should be ignored when displaying
-        # the estimated results, for example, if start_ratio = 0.2, then the output DI
-        # only contains the estimate of I(X^n \to Y^n) for n larger than
-        # length(X)/5.
+        Function `compute_DI_MI' calculates the directed information I(X^n-->
+        Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
+        for any positive integer n smaller than the length of X and Y.
+
+        X and Y: two input sequences;
+        Nx:  the size of alphabet of X, assuming X and Y have the same size of
+        alphabets;
+        D:  the maximum depth of the context tree used in basic CTW algorithm,
+        for references please see F. Willems, Y. Shtarkov and T. Tjalkens, 'The
+        Context-Tree Weighting Method: Basic Properties', IEEE Transactions on
+        Information Theory, 653-664, May 1995.
+        alg:  indicates one of the four possible estimators proposed in J.
+        Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
+        Estimation of Directed Information', http://arxiv.org/abs/1201.2334.
+        Users can indicate strings 'E1','E2','E3' and 'E4' for corresponding
+        estimators.
+        start_ratio: indicates how large initial proportion of input data should be ignored when displaying
+        the estimated results, for example, if start_ratio = 0.2, then the output DI
+        only contains the estimate of I(X^n \to Y^n) for n larger than
+        length(X)/5.
+
+        :param X: time series 1
+        :param Y: time series 2
+        :param D: maximum de
+        :return:
+        """
+
 
         n_data = len(X)
         if len(set(X)) == 1 or  len(set(Y)) == 1:
             #print('nothing to see here')
-            return np.zeros(X.shape[0] - D)
+            return np.zeros(X.shape[0] - self.p_estimator.D)
         Nx = max(X) + 1
 
         # mapp the data pair (X,Y) into a single variable taking value with
@@ -111,7 +138,7 @@ class JiaoI4(Estimator):
         py = self.p_estimator.py
 
         # % px_xy is a Nx times n_data matrix, calculating p(x_i|x^{i-1},y^{i-1})
-        px_xy = np.zeros((Nx, n_data - D))
+        px_xy = np.zeros((Nx, n_data - self.p_estimator.D))
         for i_x in range(Nx):
             px_xy[i_x, :] = pxy[i_x, :]
             for j in range(1, Nx):
@@ -122,9 +149,9 @@ class JiaoI4(Estimator):
         #temp = np.tile(px_xy, (Nx, 1))
         #py_x_xy = pxy / temp
 
-        temp_DI = np.zeros(X.shape[0] - D)
-        temp_MI = np.zeros(X.shape[0] - D)
-        temp_rev_DI = np.zeros(X.shape[0] - D)
+        temp_DI = np.zeros(X.shape[0] - self.p_estimator.D)
+        temp_MI = np.zeros(X.shape[0] - self.p_estimator.D)
+        temp_rev_DI = np.zeros(X.shape[0] - self.p_estimator.D)
         for iy in range(Nx):
             for ix in range(Nx):
                 temp_DI = temp_DI + pxy[ix + iy * Nx, :] * np.log2(pxy[ix + iy * Nx, :] / (py[iy, :] * px_xy[ix, :]))
@@ -135,7 +162,7 @@ class JiaoI4(Estimator):
                 # temp_rev_DI=temp_rev_DI+ pxy(ix+(iy-1)*Nx,:).      *log2(px_xy(ix,:)./px(ix,:));
         return np.sum(temp_DI), np.sum(temp_rev_DI), np.sum(temp_MI)
 
-    def _stationary_estimator(self, x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag):
+    def _stationary_estimator(self, x_lagged, y_lagged):
         """
         Implementation of directed information estimator I4 from [1] using Markov model
         probability estimates.
@@ -152,6 +179,10 @@ class JiaoI4(Estimator):
         Nx = np.unique(x_lagged).max() + 1
         Ny = np.unique(y_lagged).max() + 1
 
+        tmat_x = self.p_estimator.tmat_x
+        tmat_y = self.p_estimator.tmat_y
+        tmat_xy = self.p_estimator.tmat_xy
+        msmlag = self.p_estimator.msmlag
 
         # iterate over time-lagged trajectory pairs
         d, r, m = 0., 0., 0.
@@ -192,13 +223,17 @@ class JiaoI4Ensemble(Estimator):
     def __init__(self, probability_estimator):
         super(JiaoI4Ensemble, self).__init__(probability_estimator)
 
-    def _nonstationary_estimator(self, a, b, D=None):
+    def _nonstationary_estimator(self, a, b):
         raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
 
-    def _stationary_estimator(self, x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag):
+    def _stationary_estimator(self, x_lagged, y_lagged):
 
         Nx = np.unique(x_lagged).max() + 1
         Ny = np.unique(y_lagged).max() + 1
+
+        tmat_x = self.p_estimator.tmat_x
+        tmat_y = self.p_estimator.tmat_y
+        tmat_xy = self.p_estimator.tmat_xy
 
         statecounts = np.bincount(np.concatenate([_x + Nx * _y for _x, _y in zip(x_lagged, y_lagged)]))
 
