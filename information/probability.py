@@ -10,6 +10,8 @@ class MSMProbabilities:
         self.is_stationary_estimate = True
 
     def estimate(self, X, Y):
+        Nx = np.unique(X).max() + 1
+        Ny = np.unique(Y).max() + 1
 
         if not self.tmat_ck_estimate:
             self.tmat_x = pyemma.msm.estimate_markov_model(X, self.msmlag, reversible=self.reversible).transition_matrix
@@ -24,10 +26,10 @@ class MSMProbabilities:
                 pyemma.msm.estimate_markov_model(Y, 1, reversible=self.reversible).transition_matrix, self.msmlag)
 
         if not self.tmat_ck_estimate:
-            self.tmat_xy = pyemma.msm.estimate_markov_model([_x + 2 * _y for _x, _y in zip(X, Y)],
+            self.tmat_xy = pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
                                                        self.msmlag, reversible=self.reversible).transition_matrix
         else:
-            self.tmat_xy = np.linalg.matrix_power(pyemma.msm.estimate_markov_model([_x + 2 * _y for _x, _y in zip(X, Y)],
+            self.tmat_xy = np.linalg.matrix_power(pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
                                                                               1,
                                                                               reversible=self.reversible).transition_matrix,
                                              self.msmlag)
