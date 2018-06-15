@@ -37,75 +37,96 @@ class MSMProbabilities:
             print(self.tmat_x.shape, self.tmat_y.shape, self.tmat_xy.shape)
             raise NotImplementedError('Combined model is not showing all combinatorial states. Try non-reversible?')
 
+class CTWProbabilities:
+    def __init__(self, D):
+        self.D = D
+        self.is_stationary_estimate = False
+        self.pxy, self.px, self.py = None, None, None
 
-# returns var Px_record
-def ctwalgorithm(x, Nx, D):
-    # Function CTWAlgorithm outputs the universal sequential probability
-    # assignments given by CTW method.
-    if len(x.shape) != 1:
-        raise IOError('The input vector must be a colum vector!')
+    def estimate(self, X, Y):
+        Nx = np.unique(X).max() + 1
+        Ny = np.unique(Y).max() + 1
 
-    n = len(x)
-    if not np.floor((Nx ** (D + 1) - 1) / (Nx - 1)) == (Nx ** (D + 1) - 1) / (Nx - 1):
-        print(np.floor((Nx ** (D + 1) - 1) / (Nx - 1)), (Nx ** (D + 1) - 1) / (Nx - 1))
-        print(Nx, D)
-        raise UserWarning('Something did not work')
+        assert not isinstance(X, list)
 
-    countTree = np.zeros((Nx, int((Nx ** (D + 1) - 1) / (Nx - 1))))
-    betaTree = np.ones((1, int((Nx ** (D + 1) - 1) / (Nx - 1))))
-    Px_record = np.zeros((Nx, n - D))
-    indexweight = Nx ** np.arange(D)
-    offset = (Nx ** D - 1) / (Nx - 1) + 1
+        XY = X + Nx * Y
 
-    for i in range(D, n):
-        context = x[i - D:i]
-        leafindex = (np.dot(context, indexweight) + offset).astype(int)
-        xt = x[i]
-        eta = (countTree[:Nx - 1, leafindex - 1] + 0.5) / (countTree[Nx - 1, leafindex - 1] + 0.5)
+        if Nx != Ny:
+            raise NotImplementedError('CTW algo was only implemented for equal alphabet sizes.')
 
-        # update the leaf
-        countTree[xt, leafindex - 1] += 1
-        node = np.floor((leafindex + Nx - 2) / Nx).astype(int)
-
-        # print(node)
-        while np.all(node > 0):
-            countTree, betaTree, eta = ctwupdate(countTree, betaTree, eta, node, xt, 1 / 2)
-            node = np.floor((node + Nx - 2) / Nx).astype(int)
-        eta_sum = eta.sum() + 1
-
-        Px_record[:, i - D] = np.hstack([eta, [1]]) / eta_sum
-    return Px_record
+        self.pxy = self._ctwalgorithm(XY, Nx ** 2, self.D)
+        self.px = self._ctwalgorithm(X, Nx, self.D)
+        self.py = self._ctwalgorithm(Y, Nx, self.D)
 
 
-# returns [countTree, betaTree, eta]
-def ctwupdate(countTree, betaTree, eta, index, xt, alpha):
-    # countTree:  countTree(a+1,:) is the tree for the count of symbol a a=0,...,M
-    # betaTree:   betaTree(i(s) ) =  Pe^s / \prod_{b=0}^{M} Pw^{bs}(x^{t})
-    # eta = [ p(X_t = 0|.) / p(X_t = M|.), ..., p(X_t = M-1|.) / p(X_t = M|.)
+    # returns var Px_record
+    def _ctwalgorithm(self, x, Nx, D):
+        # Function CTWAlgorithm outputs the universal sequential probability
+        # assignments given by CTW method.
+        if len(x.shape) != 1:
+            raise IOError('The input vector must be a colum vector!')
 
-    # calculate eta and update beta a, b
-    # xt is the current data
+        n = len(x)
+        if not np.floor((Nx ** (D + 1) - 1) / (Nx - 1)) == (Nx ** (D + 1) - 1) / (Nx - 1):
+            print(np.floor((Nx ** (D + 1) - 1) / (Nx - 1)), (Nx ** (D + 1) - 1) / (Nx - 1))
+            print(Nx, D)
+            raise UserWarning('Something did not work')
 
-    # size of the alphbet
-    Nx = eta.shape[0] + 1
+        countTree = np.zeros((Nx, int((Nx ** (D + 1) - 1) / (Nx - 1))))
+        betaTree = np.ones((1, int((Nx ** (D + 1) - 1) / (Nx - 1))))
+        Px_record = np.zeros((Nx, n - D))
+        indexweight = Nx ** np.arange(D)
+        offset = (Nx ** D - 1) / (Nx - 1) + 1
 
-    pw = np.hstack([eta, [1]])
-    pw /= pw.sum();  # % pw(1) pw(2) .. pw(M+1)
+        for i in range(D, n):
+            context = x[i - D:i]
+            leafindex = (np.dot(context, indexweight) + offset).astype(int)
+            xt = x[i]
+            eta = (countTree[:Nx - 1, leafindex - 1] + 0.5) / (countTree[Nx - 1, leafindex - 1] + 0.5)
 
-    pe = (countTree[:, index] + 0.5) / (countTree[:, index].sum() + Nx / 2)
+            # update the leaf
+            countTree[xt, leafindex - 1] += 1
+            node = np.floor((leafindex + Nx - 2) / Nx).astype(int)
 
-    temp = betaTree[0, index]
+            # print(node)
+            while np.all(node > 0):
+                countTree, betaTree, eta = self._ctwupdate(countTree, betaTree, eta, node, xt, 1 / 2)
+                node = np.floor((node + Nx - 2) / Nx).astype(int)
+            eta_sum = eta.sum() + 1
 
-    if temp < 1000:
-        eta = (alpha * temp * pe[:Nx - 1] + (1 - alpha) * pw[:Nx - 1]) / (
-        alpha * temp * pe[Nx - 1] + (1 - alpha) * pw[Nx - 1])
-    else:
-        eta = (alpha * pe[:Nx - 1] + (1 - alpha) * pw[:Nx - 1] / temp) / (
-        alpha * pe[Nx - 1] + (1 - alpha) * pw[Nx - 1] / temp)
-    countTree[xt, index] += 1
-    betaTree[0, index] = betaTree[0, index] * pe[xt] / pw[xt]
+            Px_record[:, i - D] = np.hstack([eta, [1]]) / eta_sum
+        return Px_record
 
-    return countTree, betaTree, eta
+
+    # returns [countTree, betaTree, eta]
+    def _ctwupdate(self, countTree, betaTree, eta, index, xt, alpha):
+        # countTree:  countTree(a+1,:) is the tree for the count of symbol a a=0,...,M
+        # betaTree:   betaTree(i(s) ) =  Pe^s / \prod_{b=0}^{M} Pw^{bs}(x^{t})
+        # eta = [ p(X_t = 0|.) / p(X_t = M|.), ..., p(X_t = M-1|.) / p(X_t = M|.)
+
+        # calculate eta and update beta a, b
+        # xt is the current data
+
+        # size of the alphbet
+        Nx = eta.shape[0] + 1
+
+        pw = np.hstack([eta, [1]])
+        pw /= pw.sum();  # % pw(1) pw(2) .. pw(M+1)
+
+        pe = (countTree[:, index] + 0.5) / (countTree[:, index].sum() + Nx / 2)
+
+        temp = betaTree[0, index]
+
+        if temp < 1000:
+            eta = (alpha * temp * pe[:Nx - 1] + (1 - alpha) * pw[:Nx - 1]) / (
+            alpha * temp * pe[Nx - 1] + (1 - alpha) * pw[Nx - 1])
+        else:
+            eta = (alpha * pe[:Nx - 1] + (1 - alpha) * pw[:Nx - 1] / temp) / (
+            alpha * pe[Nx - 1] + (1 - alpha) * pw[Nx - 1] / temp)
+        countTree[xt, index] += 1
+        betaTree[0, index] = betaTree[0, index] * pe[xt] / pw[xt]
+
+        return countTree, betaTree, eta
 
 
 

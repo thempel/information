@@ -3,8 +3,6 @@ import itertools
 import numpy as np
 from bhmm import lag_observations
 
-from information import ctwalgorithm
-
 
 class Estimator(object):
     def __init__(self, probability_estimator):
@@ -108,9 +106,9 @@ class JiaoI4(Estimator):
         XY = X + Nx * Y
 
         # Calculate the CTW probability assignment
-        pxy = ctwalgorithm(XY, Nx ** 2, D)
-        px = ctwalgorithm(X, Nx, D)
-        py = ctwalgorithm(Y, Nx, D)
+        pxy = self.p_estimator.pxy
+        px = self.p_estimator.px
+        py = self.p_estimator.py
 
         # % px_xy is a Nx times n_data matrix, calculating p(x_i|x^{i-1},y^{i-1})
         px_xy = np.zeros((Nx, n_data - D))
@@ -120,7 +118,7 @@ class JiaoI4(Estimator):
                 px_xy[i_x, :] = px_xy[i_x, :] + pxy[i_x + j * Nx, :]
 
 
-                # %calculate P(y|x,X^{i-1},Y^{i-1})
+        # %calculate P(y|x,X^{i-1},Y^{i-1})
         temp = np.tile(px_xy, (Nx, 1))
         py_x_xy = pxy / temp
 
@@ -129,7 +127,7 @@ class JiaoI4(Estimator):
             for ix in range(Nx):
                 temp_DI = temp_DI + pxy[ix + iy * Nx, :] * np.log2(pxy[ix + iy * Nx, :] / (py[iy, :] * px_xy[ix, :]))
 
-        return np.cumsum(temp_DI)
+        return np.sum(temp_DI), None, None
 
     def _stationary_estimator(self, x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag):
         """
