@@ -50,22 +50,36 @@ class CTWProbabilities:
         """
         self.D = D
         self.is_stationary_estimate = False
-        self.pxy, self.px, self.py = None, None, None
+        self.pxy, self.px, self.py = [], [], []
 
     def estimate(self, X, Y):
-        Nx = np.unique(X).max() + 1
-        Ny = np.unique(Y).max() + 1
+        if not isinstance(X, list): X = [X]
+        if not isinstance(Y, list): Y = [Y]
 
-        assert not isinstance(X, list)
+        if np.any([len(x) <= self.D for x in X]):
+            raise RuntimeError('Some trajectories are shorter than requested CT depth self.D.')
 
-        XY = X + Nx * Y
+        for _X, _Y in zip(X, Y):
+            if np.unique(_X).max() + 1 > len(set(_X)):
+                mapper = np.zeros(np.unique(_X).max()+1) - 1
+                mapper[np.unique(_X)] = list(range(np.unique(_X).shape[0]))
+                _x = mapper[_X]
+            else:
+                _x = _X
+            if np.unique(_Y).max() + 1 > len(set(_Y)):
+                mapper = np.zeros(np.unique(_Y).max()+1) - 1
+                mapper[np.unique(_Y)] = list(range(np.unique(_Y).shape[0]))
+                _y = mapper[_Y]
+            else:
+                _y = _Y
+            Nx_subset = (np.unique(_x).max() + 1).astype(int)
+            Ny_subset = (np.unique(_y).max() + 1).astype(int)
+            #if not Nx_subset == Ny_subset:
+            #    print('something bad will happen...')
 
-        if Nx != Ny:
-            raise NotImplementedError('CTW algo was only implemented for equal alphabet sizes.')
-
-        self.pxy = self._ctwalgorithm(XY, Nx ** 2, self.D)
-        self.px = self._ctwalgorithm(X, Nx, self.D)
-        self.py = self._ctwalgorithm(Y, Nx, self.D)
+            self.pxy.append(self._ctwalgorithm(_x + Nx_subset * _y, Nx_subset * Ny_subset, self.D))
+            self.px.append(self._ctwalgorithm(_x, Nx_subset, self.D))
+            self.py.append(self._ctwalgorithm(_y, Ny_subset, self.D))
 
     def _ctwalgorithm(self, x, Nx, D):
         """
@@ -86,7 +100,10 @@ class CTWProbabilities:
             raise IOError('The input vector must be a colum vector!')
 
         n = len(x)
-        if not np.floor((Nx ** (D + 1) - 1) / (Nx - 1)) == (Nx ** (D + 1) - 1) / (Nx - 1):
+        if Nx == 1:
+            # if only one state exists, transition probability is one
+          return np.ones(x.shape[0] - D)
+        elif not np.floor((Nx ** (D + 1) - 1) / (Nx - 1)) == (Nx ** (D + 1) - 1) / (Nx - 1):
             print(np.floor((Nx ** (D + 1) - 1) / (Nx - 1)), (Nx ** (D + 1) - 1) / (Nx - 1))
             print(Nx, D)
             raise UserWarning('Something did not work')
@@ -100,7 +117,7 @@ class CTWProbabilities:
         for i in range(D, n):
             context = x[i - D:i]
             leafindex = (np.dot(context, indexweight) + offset).astype(int)
-            xt = x[i]
+            xt = x[i].astype(int)
             eta = (countTree[:Nx - 1, leafindex - 1] + 0.5) / (countTree[Nx - 1, leafindex - 1] + 0.5)
 
             # update the leaf

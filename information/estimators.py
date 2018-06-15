@@ -25,16 +25,22 @@ class Estimator(object):
         """
         if not isinstance(A, list): A = [A]
         if not isinstance(B, list): B = [B]
+        assert isinstance(A[0], np.ndarray)
+        assert isinstance(B[0], np.ndarray)
+
+        for a1, a2 in zip(A, B):
+            if a1.shape[0] != a2.shape[0]:
+                print(a1.shape, a2.shape)
+                print('something wrong with traj lengths')
+                return
+
         self.Nx = np.unique(np.concatenate(A)).max() + 1
         self.Ny = np.unique(np.concatenate(B)).max() + 1
 
         if self.p_estimator.is_stationary_estimate:
             self.d, self.r, self.m = self.stationary_estimate(A, B)
         else:
-            # TODO: make CTW available to lists of trajectories.
-            if len(A)> 1:
-                raise NotImplementedError
-            self.d, self.r, self.m = self.nonstationary_estimate(A[0], B[0])
+            self.d, self.r, self.m = self.nonstationary_estimate(A, B)
 
         return self
 
@@ -60,17 +66,6 @@ class Estimator(object):
         tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
-
-        if not isinstance(X, list): X = [X]
-        if not isinstance(Y, list): Y = [Y]
-        assert isinstance(X[0], np.ndarray)
-        assert isinstance(Y[0], np.ndarray)
-
-        for a1, a2 in zip(X, Y):
-            if a1.shape[0] != a2.shape[0]:
-                print(a1.shape, a2.shape)
-                print('something wrong with traj lengths')
-                return
 
         assert self.Nx - 1 == tmat_x.shape[0] - 1 and np.unique(np.concatenate(X)).min() == 0
         assert self.Ny - 1 == tmat_y.shape[0] - 1 and np.unique(np.concatenate(Y)).min() == 0
@@ -125,48 +120,68 @@ class JiaoI4(Estimator):
 
         :param X: time series 1
         :param Y: time series 2
-        :param D: maximum de
         :return:
         """
+        dis, rdis, mis = np.zeros(len(X)), np.zeros(len(X)), np.zeros(len(X))
+        for n, (_X, _Y) in enumerate(zip(X, Y)):
+            # re-label states if necessary
+            if np.unique(_X).max() + 1 > len(set(_X)):
+                mapper = np.zeros(np.unique(_X).max()+1) - 1
+                mapper[np.unique(_X)] = list(range(np.unique(_X).shape[0]))
+                _x = mapper[_X]
+            else:
+                _x = _X
+            if np.unique(_Y).max() + 1 > len(set(_Y)):
+                mapper = np.zeros(np.unique(_Y).max()+1) - 1
+                mapper[np.unique(_Y)] = list(range(np.unique(_Y).shape[0]))
+                _y = mapper[_Y]
+            else:
+                _y = _Y
 
-        n_data = len(X)
-        if len(set(X)) == 1 or  len(set(Y)) == 1:
-            #print('nothing to see here')
-            return np.zeros(X.shape[0] - self.p_estimator.D)
-        self.Nx = max(X) + 1
 
-        # mapp the data pair (X,Y) into a single variable taking value with
-        # alphabet size |X||Y|
-        XY = X + self.Nx * Y
+            Nx_subset = (np.unique(_x).max() + 1).astype(int)
+            Ny_subset = (np.unique(_y).max() + 1).astype(int)
+            n_data = len(_x)
+            if len(set(_x)) == 1 or len(set(_x)) == 1:
+                #print('nothing to see here')
+                dis[n], rdis[n], mis[n] = 0., 0., 0.
+                continue
 
-        # Calculate the CTW probability assignment
-        pxy = self.p_estimator.pxy
-        px = self.p_estimator.px
-        py = self.p_estimator.py
 
-        # % px_xy is a Nx times n_data matrix, calculating p(x_i|x^{i-1},y^{i-1})
-        px_xy = np.zeros((self.Nx, n_data - self.p_estimator.D))
-        for i_x in range(self.Nx):
-            px_xy[i_x, :] = pxy[i_x, :]
-            for j in range(1, self.Nx):
-                px_xy[i_x, :] = px_xy[i_x, :] + pxy[i_x + j * self.Nx, :]
+            # mapp the data pair (X,Y) into a single variable taking value with
+            # alphabet size |X||Y|
+            XY = _x + Nx_subset * _y
 
-        # %calculate P(y|x,X^{i-1},Y^{i-1})
-        #temp = np.tile(px_xy, (Nx, 1))
-        #py_x_xy = pxy / temp
+            # Calculate the CTW probability assignment
+            pxy = self.p_estimator.pxy[n]
+            px = self.p_estimator.px[n]
+            py = self.p_estimator.py[n]
 
-        temp_DI = np.zeros(X.shape[0] - self.p_estimator.D)
-        temp_MI = np.zeros(X.shape[0] - self.p_estimator.D)
-        temp_rev_DI = np.zeros(X.shape[0] - self.p_estimator.D)
-        for iy in range(self.Nx):
-            for ix in range(self.Nx):
-                temp_DI = temp_DI + pxy[ix + iy * self.Nx, :] * np.log2(pxy[ix + iy * self.Nx, :] / (py[iy, :] * px_xy[ix, :]))
-                # temp_DI=temp_DI + pxy(ix+(iy-1)*Nx,:).     *log2(pxy(ix+(iy-1)*Nx,:). / (py(iy,:).*  px_xy(ix,:)));
-                temp_MI = temp_MI + pxy[ix + iy * self.Nx, :] * np.log2(pxy[ix + iy * self.Nx, :] / (py[iy, :] * px[ix, :]))
-                # temp_MI=temp_MI+  pxy(ix+(iy-1)*Nx,:).*     log2(pxy(ix+(iy-1)*Nx,:)./(py(iy,:).*px(ix,:)));
-                temp_rev_DI = temp_rev_DI + pxy[ix + iy * self.Nx, :] * np.log2(px_xy[ix, :] / px[ix, :])
-                # temp_rev_DI=temp_rev_DI+ pxy(ix+(iy-1)*Nx,:).      *log2(px_xy(ix,:)./px(ix,:));
-        return np.sum(temp_DI), np.sum(temp_rev_DI), np.sum(temp_MI)
+            # % px_xy is a Nx times n_data matrix, calculating p(x_i|x^{i-1},y^{i-1})
+            px_xy = np.zeros((Nx_subset, n_data - self.p_estimator.D))
+            for i_x in range(Nx_subset):
+                px_xy[i_x, :] = pxy[i_x, :]
+                for j in range(1, Ny_subset):
+                    px_xy[i_x, :] = px_xy[i_x, :] + pxy[i_x + j * Nx_subset, :]
+
+            # %calculate P(y|x,X^{i-1},Y^{i-1})
+            #temp = np.tile(px_xy, (Nx, 1))
+            #py_x_xy = pxy / temp
+
+            temp_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
+            temp_MI = np.zeros(_x.shape[0] - self.p_estimator.D)
+            temp_rev_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
+            for iy in range(Ny_subset):
+                for ix in range(Nx_subset):
+                    temp_DI = temp_DI + pxy[ix + iy * Nx_subset] * np.log2(pxy[ix + iy * Nx_subset] / (py[iy] * px_xy[ix]))
+                    # temp_DI=temp_DI + pxy(ix+(iy-1)*Nx,:).     *log2(pxy(ix+(iy-1)*Nx,:). / (py(iy,:).*  px_xy(ix,:)));
+                    temp_MI = temp_MI + pxy[ix + iy * Nx_subset] * np.log2(pxy[ix + iy * Nx_subset] / (py[iy] * px[ix]))
+                    # temp_MI=temp_MI+  pxy(ix+(iy-1)*Nx,:).*     log2(pxy(ix+(iy-1)*Nx,:)./(py(iy,:).*px(ix,:)));
+                    temp_rev_DI = temp_rev_DI + pxy[ix + iy * Nx_subset] * np.log2(px_xy[ix] / px[ix])
+                    # temp_rev_DI=temp_rev_DI+ pxy(ix+(iy-1)*Nx,:).      *log2(px_xy(ix,:)./px(ix,:));
+            dis[n], rdis[n], mis[n] = np.sum(temp_DI), np.sum(temp_rev_DI), np.sum(temp_MI)
+
+        return dis.mean(), rdis.mean(), mis.mean()
 
     def _stationary_estimator(self, x_lagged, y_lagged):
         """

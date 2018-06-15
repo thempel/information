@@ -104,3 +104,19 @@ class TestSuperSimple(unittest.TestCase):
         self.assertGreaterEqual(estimator.m, 0)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+
+    def test_CTWInfo_bad_traj(self):
+        prob_est = information.CTWProbabilities(D=3)
+        A = np.ones(100, dtype=int)
+        B = np.ones(100, dtype=int)
+        prob_est.estimate(A, B)
+
+        estimator = information.JiaoI4(prob_est)
+
+        estimator.estimate(A, B)
+
+        self.assertGreaterEqual(estimator.d, 0)
+        self.assertGreaterEqual(estimator.r, 0)
+        self.assertGreaterEqual(estimator.m, 0)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
