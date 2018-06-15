@@ -8,149 +8,113 @@ from information import ctwalgorithm
 
 
 class JiaoI4:
-    def __init__(self):
-        pass
-    def stationary_estimate(self, A, B, p_estimator):
-        return compute_DI_MI_E4_imsm(A, B, p_estimator.msmlag,
-                                     tmat_x=p_estimator.tmat_x,
-                                     tmat_y=p_estimator.tmat_y,
-                                     tmat_xy=p_estimator.tmat_xy)
-
-    def nonstationary_estimate(self, A, B, p_estimator):
-        return compute_DI_MI_E4(A, B, D=p_estimator.D)
+    def __init__(self, probability_estimator):
+        self.p_estimator = probability_estimator
 
 
-def compute_DI_MI_E4(X, Y, D=-1):
-    # Function `compute_DI_MI' calculates the directed information I(X^n-->
-    # Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
-    # for any positive integer n smaller than the length of X and Y.
-
-    # X and Y: two input sequences;
-    # Nx:  the size of alphabet of X, assuming X and Y have the same size of
-    # alphabets;
-    # D:  the maximum depth of the context tree used in basic CTW algorithm,
-    # for references please see F. Willems, Y. Shtarkov and T. Tjalkens, 'The
-    # Context-Tree Weighting Method: Basic Properties', IEEE Transactions on
-    # Information Theory, 653-664, May 1995.
-    # alg:  indicates one of the four possible estimators proposed in J.
-    # Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
-    # Estimation of Directed Information', http://arxiv.org/abs/1201.2334.
-    # Users can indicate strings 'E1','E2','E3' and 'E4' for corresponding
-    # estimators.
-    # start_ratio: indicates how large initial proportion of input data should be ignored when displaying
-    # the estimated results, for example, if start_ratio = 0.2, then the output DI
-    # only contains the estimate of I(X^n \to Y^n) for n larger than
-    # length(X)/5.
-
-    n_data = len(X)
-    if len(set(X)) == 1 or  len(set(Y)) == 1:
-        #print('nothing to see here')
-        return np.zeros(X.shape[0] - D)
-    Nx = max(X) + 1
-
-    # mapp the data pair (X,Y) into a single variable taking value with
-    # alphabet size |X||Y|
-    XY = X + Nx * Y
-
-    # Calculate the CTW probability assignment
-    pxy = ctwalgorithm(XY, Nx ** 2, D)
-    px = ctwalgorithm(X, Nx, D)
-    py = ctwalgorithm(Y, Nx, D)
-
-    # % px_xy is a Nx times n_data matrix, calculating p(x_i|x^{i-1},y^{i-1})
-    px_xy = np.zeros((Nx, n_data - D))
-    for i_x in range(Nx):
-        px_xy[i_x, :] = pxy[i_x, :]
-        for j in range(1, Nx):
-            px_xy[i_x, :] = px_xy[i_x, :] + pxy[i_x + j * Nx, :]
+    def nonstationary_estimate(self, A, B):
+        return self.compute_DI_MI_E4(A, B, D=self.p_estimator.D)
 
 
-            # %calculate P(y|x,X^{i-1},Y^{i-1})
-    temp = np.tile(px_xy, (Nx, 1))
-    py_x_xy = pxy / temp
+    def compute_DI_MI_E4(X, Y, D=-1):
+        # Function `compute_DI_MI' calculates the directed information I(X^n-->
+        # Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
+        # for any positive integer n smaller than the length of X and Y.
 
-    temp_DI = np.zeros(X.shape[0] - D)
-    for iy in range(Nx):
-        for ix in range(Nx):
-            temp_DI = temp_DI + pxy[ix + iy * Nx, :] * np.log2(pxy[ix + iy * Nx, :] / (py[iy, :] * px_xy[ix, :]))
+        # X and Y: two input sequences;
+        # Nx:  the size of alphabet of X, assuming X and Y have the same size of
+        # alphabets;
+        # D:  the maximum depth of the context tree used in basic CTW algorithm,
+        # for references please see F. Willems, Y. Shtarkov and T. Tjalkens, 'The
+        # Context-Tree Weighting Method: Basic Properties', IEEE Transactions on
+        # Information Theory, 653-664, May 1995.
+        # alg:  indicates one of the four possible estimators proposed in J.
+        # Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
+        # Estimation of Directed Information', http://arxiv.org/abs/1201.2334.
+        # Users can indicate strings 'E1','E2','E3' and 'E4' for corresponding
+        # estimators.
+        # start_ratio: indicates how large initial proportion of input data should be ignored when displaying
+        # the estimated results, for example, if start_ratio = 0.2, then the output DI
+        # only contains the estimate of I(X^n \to Y^n) for n larger than
+        # length(X)/5.
 
-    return np.cumsum(temp_DI)
+        n_data = len(X)
+        if len(set(X)) == 1 or  len(set(Y)) == 1:
+            #print('nothing to see here')
+            return np.zeros(X.shape[0] - D)
+        Nx = max(X) + 1
+
+        # mapp the data pair (X,Y) into a single variable taking value with
+        # alphabet size |X||Y|
+        XY = X + Nx * Y
+
+        # Calculate the CTW probability assignment
+        pxy = ctwalgorithm(XY, Nx ** 2, D)
+        px = ctwalgorithm(X, Nx, D)
+        py = ctwalgorithm(Y, Nx, D)
+
+        # % px_xy is a Nx times n_data matrix, calculating p(x_i|x^{i-1},y^{i-1})
+        px_xy = np.zeros((Nx, n_data - D))
+        for i_x in range(Nx):
+            px_xy[i_x, :] = pxy[i_x, :]
+            for j in range(1, Nx):
+                px_xy[i_x, :] = px_xy[i_x, :] + pxy[i_x + j * Nx, :]
 
 
-def compute_DI_MI_E4_imsm(X, Y, msmlag=1, reversible=True, tmat_x=None, tmat_y=None, tmat_xy=None,
-                          tmat_ck_estimate=False):
-    """
-    Directed information computation on discrete trajectories with Markov model
-    probability estimates. Convenience function that compares single state binary
-    trajectories, i.e. returns directed information estimates from microstate i to j.
+                # %calculate P(y|x,X^{i-1},Y^{i-1})
+        temp = np.tile(px_xy, (Nx, 1))
+        py_x_xy = pxy / temp
 
-    Returns directed information, reverse directed information and mutual information
-    as defined by Jiao et al, 2013.
+        temp_DI = np.zeros(X.shape[0] - D)
+        for iy in range(Nx):
+            for ix in range(Nx):
+                temp_DI = temp_DI + pxy[ix + iy * Nx, :] * np.log2(pxy[ix + iy * Nx, :] / (py[iy, :] * px_xy[ix, :]))
 
-    :param X: Time-series 1
-    :param Y: Time-series 2
-    :param msmlag: MSM lag time
-    :param reversible: MSM estimator type
-    :return: di, rdi, mi
-    """
+        return np.cumsum(temp_DI)
 
-    if not isinstance(X, list): X = [X]
-    if not isinstance(Y, list): Y = [Y]
-    assert isinstance(X[0], np.ndarray)
-    assert isinstance(Y[0], np.ndarray)
 
-    Nx = np.concatenate(X).max() + 1
-    Ny = np.concatenate(Y).max() + 1
+    def stationary_estimate(self, X, Y):
+        """
+        Directed information computation on discrete trajectories with Markov model
+        probability estimates. Convenience function that compares single state binary
+        trajectories, i.e. returns directed information estimates from microstate i to j.
 
-    if tmat_ck_estimate: print('ATTENTION: Tmat estimated as T(1)^{}'.format(msmlag))
+        Returns directed information, reverse directed information and mutual information
+        as defined by Jiao et al, 2013.
 
-    for a1, a2 in zip(X, Y):
-        if a1.shape[0] != a2.shape[0]:
-            print(a1.shape, a2.shape)
-            print('something wrong with traj lengths')
-            return
-    # DI is invariant under boolean inversion, so 2 state trajs don't require case differentiation
-    if Nx == 2 and Ny == 2:
+        :param X: Time-series 1
+        :param Y: Time-series 2
+        :param msmlag: MSM lag time
+        :param reversible: MSM estimator type
+        :return: di, rdi, mi
+        """
+        msmlag = self.p_estimator.msmlag
+
+        tmat_x = self.p_estimator.tmat_x
+        tmat_y = self.p_estimator.tmat_y
+        tmat_xy = self.p_estimator.tmat_xy
+
+        if not isinstance(X, list): X = [X]
+        if not isinstance(Y, list): Y = [Y]
+        assert isinstance(X[0], np.ndarray)
+        assert isinstance(Y[0], np.ndarray)
+
+        for a1, a2 in zip(X, Y):
+            if a1.shape[0] != a2.shape[0]:
+                print(a1.shape, a2.shape)
+                print('something wrong with traj lengths')
+                return
+        # DI is invariant under boolean inversion, so 2 state trajs don't require case differentiation
+
         assert set(np.concatenate(X)) == {0, 1}
         assert set(np.concatenate(Y)) == {0, 1}
 
-
         x_lagged = lag_observations(X, msmlag)
         y_lagged = lag_observations(Y, msmlag)
+
         di, rev_di, mi = _directed_information_estimator(x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag)
-    else:
-        if (tmat_x is not None) or (tmat_y is not None) or (tmat_xy is not None):
-            print('Cannot initialize non-binary system with transition matrices. Ingnoring.')
-        di = np.zeros((Nx, Ny))
-        rev_di = np.zeros((Nx, Ny))
-        mi = np.zeros((Nx, Ny))
-        for n, (i_x, i_y) in enumerate(itertools.product(range(Nx), range(Ny))):
-            if not tmat_ck_estimate:
-                tmat_x = pyemma.msm.estimate_markov_model([(_x == i_x).astype(int) for _x in X],
-                                                          msmlag, reversible=reversible).transition_matrix
-                tmat_y = pyemma.msm.estimate_markov_model([(_y == i_y).astype(int) for _y in Y],
-                                                          msmlag, reversible=reversible).transition_matrix
-                tmat_xy = pyemma.msm.estimate_markov_model(
-                    [(_x == i_x).astype(int) + 2 * (_y == i_y).astype(int) for _x, _y in zip(X, Y)],
-                    msmlag, reversible=reversible).transition_matrix
-            else:
-                tmat_x = np.linalg.matrix_power(pyemma.msm.estimate_markov_model([(_x == i_x).astype(int) for _x in X],
-                                                          1, reversible=reversible).transition_matrix, msmlag)
-                tmat_y = np.linalg.matrix_power(pyemma.msm.estimate_markov_model([(_y == i_y).astype(int) for _y in Y],
-                                                          1, reversible=reversible).transition_matrix, msmlag)
-                tmat_xy = np.linalg.matrix_power(pyemma.msm.estimate_markov_model(
-                    [(_x == i_x).astype(int) + 2 * (_y == i_y).astype(int) for _x, _y in zip(X, Y)],
-                    1, reversible=reversible).transition_matrix, msmlag)
-            if not tmat_x.shape[0] * tmat_y.shape[0] == tmat_xy.shape[0]:
-                print(tmat_x.shape, tmat_y.shape, tmat_xy.shape)
-                raise NotImplementedError('Combined model is not showing all combinatorial states. Try non-reversible?')
 
-            x_lagged = [(_x == i_x).astype(int) for _x in lag_observations(X, msmlag)]
-            y_lagged = [(_y == i_y).astype(int) for _y in lag_observations(Y, msmlag)]
-            di[i_x, i_y], rev_di[i_x, i_y], mi[i_x, i_y] = _directed_information_estimator(x_lagged, y_lagged, tmat_x,
-                                                                                           tmat_y, tmat_xy, msmlag)
-
-    return di, rev_di, mi
+        return di, rev_di, mi
 
 
 def _directed_information_estimator(x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag):

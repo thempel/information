@@ -10,7 +10,7 @@ class Information(object):
         self.B = B
 
         if self.p_estimator.is_stationary_estimate:
-            self.d, self.r, self.m = self.i_estimator.stationary_estimate(A, B, self.p_estimator)
+            self.d, self.r, self.m = self.i_estimator.stationary_estimate(A, B)
         else:
             raise NotImplementedError('Not yet implemented.')
 
