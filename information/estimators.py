@@ -184,6 +184,49 @@ class JiaoI4(Estimator):
         return d, r, m
 
 
+class JiaoI4Ensemble(Estimator):
+    def __init__(self, probability_estimator):
+        super(JiaoI4Ensemble, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, a, b, D=None):
+        raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
+
+    def _stationary_estimator(self, x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag):
+
+        Nx = np.unique(x_lagged).max() + 1
+        Ny = np.unique(y_lagged).max() + 1
+
+        statecounts = np.bincount(np.concatenate([_x + Nx * _y for _x, _y in zip(x_lagged, y_lagged)]))
+
+        prob_xi_to_xip1_given_yi = np.zeros((Nx, Nx, Ny))
+        for xi, xip1, yi in itertools.product(*[range(Nx), range(Nx), range(Ny)]):
+            prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + Nx * yi, xip1 + Nx * _y] for _y in range(Ny)])
+
+        di, rdi, mi = 0., 0., 0.
+        for xi, yi in itertools.product(range(Nx), range(Ny)):
+
+            tmat_y_at_yi_bloated = np.repeat(tmat_y[yi], Nx)
+            tmat_x_at_xi_bloated = np.tile(tmat_x[xi], Ny)
+            prob_xi_xip1_given_yi_at_xi_yi_bloated = np.tile(prob_xi_to_xip1_given_yi[xi, :, yi], Ny)
+            counts_xi_yi = statecounts[xi + Nx * yi]
+
+            idx = np.logical_and(tmat_xy[xi + Nx * yi] > 0,
+                                 tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated > 0)
+
+            di += counts_xi_yi * np.sum(tmat_xy[xi + Nx * yi][idx] * np.log2(
+                tmat_xy[xi + Nx * yi][idx] / (tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated)[idx]))
+
+            rdi += counts_xi_yi * np.sum(tmat_xy[xi + Nx * yi][idx] * np.log2(
+                prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] / tmat_x_at_xi_bloated[idx]))
+            mi += counts_xi_yi * np.sum(tmat_xy[xi + Nx * yi][idx] * np.log2(
+                tmat_xy[xi + Nx * yi][idx] / (tmat_y_at_yi_bloated * tmat_x_at_xi_bloated)[idx]))
+        di = di / statecounts.sum()
+        mi = mi / statecounts.sum()
+        rdi = rdi / statecounts.sum()
+
+        return di, rdi, mi
+
+
 def dir_info(A, B, msmlag, reversible=True):
     """
     Convenience function for estimating the directed information between two
