@@ -119,15 +119,21 @@ class JiaoI4(Estimator):
 
 
         # %calculate P(y|x,X^{i-1},Y^{i-1})
-        temp = np.tile(px_xy, (Nx, 1))
-        py_x_xy = pxy / temp
+        #temp = np.tile(px_xy, (Nx, 1))
+        #py_x_xy = pxy / temp
 
         temp_DI = np.zeros(X.shape[0] - D)
+        temp_MI = np.zeros(X.shape[0] - D)
+        temp_rev_DI = np.zeros(X.shape[0] - D)
         for iy in range(Nx):
             for ix in range(Nx):
                 temp_DI = temp_DI + pxy[ix + iy * Nx, :] * np.log2(pxy[ix + iy * Nx, :] / (py[iy, :] * px_xy[ix, :]))
-
-        return np.sum(temp_DI), None, None
+                # temp_DI=temp_DI + pxy(ix+(iy-1)*Nx,:).     *log2(pxy(ix+(iy-1)*Nx,:). / (py(iy,:).*  px_xy(ix,:)));
+                temp_MI = temp_MI + pxy[ix + iy * Nx, :] * np.log2(pxy[ix + iy * Nx, :] / (py[iy, :] * px[ix, :]))
+                # temp_MI=temp_MI+  pxy(ix+(iy-1)*Nx,:).*     log2(pxy(ix+(iy-1)*Nx,:)./(py(iy,:).*px(ix,:)));
+                temp_rev_DI = temp_rev_DI + pxy[ix + iy * Nx, :] * np.log2(px_xy[ix, :] / px[ix, :])
+                # temp_rev_DI=temp_rev_DI+ pxy(ix+(iy-1)*Nx,:).      *log2(px_xy(ix,:)./px(ix,:));
+        return np.sum(temp_DI), np.sum(temp_rev_DI), np.sum(temp_MI)
 
     def _stationary_estimator(self, x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy, msmlag):
         """

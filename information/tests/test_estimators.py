@@ -100,7 +100,7 @@ class TestSuperSimple(unittest.TestCase):
         estimator.estimate(A, B)
 
         self.assertGreaterEqual(estimator.d, 0)
-        #self.assertGreaterEqual(estimator.r, 0)
-        #self.assertGreaterEqual(estimator.m, 0)
+        self.assertGreaterEqual(estimator.r, 0)
+        self.assertGreaterEqual(estimator.m, 0)
 
-        #self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
