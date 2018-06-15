@@ -1,5 +1,4 @@
 import itertools
-
 import numpy as np
 from bhmm import lag_observations
 
@@ -87,6 +86,7 @@ class Estimator(object):
 
 
 class JiaoI4(Estimator):
+    r"""Estimator for Jiao et al I4 with CTW and MSM probabilities"""
     def __init__(self, probability_estimator):
         super(JiaoI4, self).__init__(probability_estimator)
 
@@ -121,7 +121,6 @@ class JiaoI4(Estimator):
         :return:
         """
 
-
         n_data = len(X)
         if len(set(X)) == 1 or  len(set(Y)) == 1:
             #print('nothing to see here')
@@ -143,7 +142,6 @@ class JiaoI4(Estimator):
             px_xy[i_x, :] = pxy[i_x, :]
             for j in range(1, Nx):
                 px_xy[i_x, :] = px_xy[i_x, :] + pxy[i_x + j * Nx, :]
-
 
         # %calculate P(y|x,X^{i-1},Y^{i-1})
         #temp = np.tile(px_xy, (Nx, 1))
@@ -170,10 +168,6 @@ class JiaoI4(Estimator):
         [1] Jiao et al, Universal Estimation of Directed Information, 2013.
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
-        :param mmx: Markov model of binary trajectory 1
-        :param mmy: Markov model of binary trajectory 2
-        :param mmxy: Markov model of binary trajectory 1&2, x +2 * y state assignment
-        :param msmlag: Markov model lag time
         :return: directed information, reverse directed information, mutual information
         """
         Nx = np.unique(x_lagged).max() + 1
@@ -220,6 +214,7 @@ class JiaoI4(Estimator):
 
 
 class JiaoI4Ensemble(Estimator):
+    r"""Estimator for Jiao et al I4 for MSM probabilities in ensemble average formulation"""
     def __init__(self, probability_estimator):
         super(JiaoI4Ensemble, self).__init__(probability_estimator)
 

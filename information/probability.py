@@ -1,6 +1,7 @@
 import numpy as np
 import pyemma
 
+
 class MSMProbabilities:
     def __init__(self, msmlag=1, reversible=True, tmat_ck_estimate=False):
         self.msmlag = msmlag
@@ -37,8 +38,13 @@ class MSMProbabilities:
             print(self.tmat_x.shape, self.tmat_y.shape, self.tmat_xy.shape)
             raise NotImplementedError('Combined model is not showing all combinatorial states. Try non-reversible?')
 
+
 class CTWProbabilities:
     def __init__(self, D):
+        """
+        Implementation of CTW algorithm as described by Jiao et al.
+        :param D: context tree depth
+        """
         self.D = D
         self.is_stationary_estimate = False
         self.pxy, self.px, self.py = None, None, None
@@ -58,11 +64,21 @@ class CTWProbabilities:
         self.px = self._ctwalgorithm(X, Nx, self.D)
         self.py = self._ctwalgorithm(Y, Nx, self.D)
 
-
-    # returns var Px_record
     def _ctwalgorithm(self, x, Nx, D):
+        """
+        Transcribed from Matlab implementation, original to be found here:
+        https://github.com/EEthinker/Universal_directed_information
+        Original docstring:
+        # returns var Px_record
         # Function CTWAlgorithm outputs the universal sequential probability
         # assignments given by CTW method.
+
+        :param x: time series
+        :param Nx: alphabet size
+        :param D: context tree depth
+        :return: probability record
+        """
+
         if len(x.shape) != 1:
             raise IOError('The input vector must be a colum vector!')
 
@@ -97,15 +113,28 @@ class CTWProbabilities:
             Px_record[:, i - D] = np.hstack([eta, [1]]) / eta_sum
         return Px_record
 
-
-    # returns [countTree, betaTree, eta]
     def _ctwupdate(self, countTree, betaTree, eta, index, xt, alpha):
+        """
+        Transcribed from Matlab implementation, original to be found here:
+        https://github.com/EEthinker/Universal_directed_information
+        Original docstring:
+        # returns [countTree, betaTree, eta]
         # countTree:  countTree(a+1,:) is the tree for the count of symbol a a=0,...,M
         # betaTree:   betaTree(i(s) ) =  Pe^s / \prod_{b=0}^{M} Pw^{bs}(x^{t})
         # eta = [ p(X_t = 0|.) / p(X_t = M|.), ..., p(X_t = M-1|.) / p(X_t = M|.)
 
         # calculate eta and update beta a, b
         # xt is the current data
+
+        :param countTree: cf. orig. docstring
+        :param betaTree:
+        :param eta:
+        :param index:
+        :param xt:
+        :param alpha:
+        :return:
+        """
+
 
         # size of the alphbet
         Nx = eta.shape[0] + 1
@@ -127,8 +156,3 @@ class CTWProbabilities:
         betaTree[0, index] = betaTree[0, index] * pe[xt] / pw[xt]
 
         return countTree, betaTree, eta
-
-
-
-
-
