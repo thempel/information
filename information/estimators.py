@@ -14,6 +14,7 @@ class Estimator(object):
         """
         self.p_estimator = probability_estimator
         self.d, self.r, self.m = None, None, None
+        self.Nx, self.Ny = 0, 0
 
     def estimate(self, A, B):
         """
@@ -22,11 +23,18 @@ class Estimator(object):
         :param B: time series B
         :return: self
         """
+        if not isinstance(A, list): A = [A]
+        if not isinstance(B, list): B = [B]
+        self.Nx = np.unique(np.concatenate(A)).max() + 1
+        self.Ny = np.unique(np.concatenate(B)).max() + 1
 
         if self.p_estimator.is_stationary_estimate:
             self.d, self.r, self.m = self.stationary_estimate(A, B)
         else:
-            self.d, self.r, self.m = self.nonstationary_estimate(A, B)
+            # TODO: make CTW available to lists of trajectories.
+            if len(A)> 1:
+                raise NotImplementedError
+            self.d, self.r, self.m = self.nonstationary_estimate(A[0], B[0])
 
         return self
 
@@ -64,8 +72,8 @@ class Estimator(object):
                 print('something wrong with traj lengths')
                 return
 
-        assert np.unique(X).max() == tmat_x.shape[0] - 1 and np.unique(X).min() == 0
-        assert np.unique(Y).max() == tmat_y.shape[0] - 1 and np.unique(Y).min() == 0
+        assert self.Nx - 1 == tmat_x.shape[0] - 1 and np.unique(np.concatenate(X)).min() == 0
+        assert self.Ny - 1 == tmat_y.shape[0] - 1 and np.unique(np.concatenate(Y)).min() == 0
 
         x_lagged = lag_observations(X, msmlag)
         y_lagged = lag_observations(Y, msmlag)
@@ -125,11 +133,11 @@ class JiaoI4(Estimator):
         if len(set(X)) == 1 or  len(set(Y)) == 1:
             #print('nothing to see here')
             return np.zeros(X.shape[0] - self.p_estimator.D)
-        Nx = max(X) + 1
+        self.Nx = max(X) + 1
 
         # mapp the data pair (X,Y) into a single variable taking value with
         # alphabet size |X||Y|
-        XY = X + Nx * Y
+        XY = X + self.Nx * Y
 
         # Calculate the CTW probability assignment
         pxy = self.p_estimator.pxy
@@ -137,11 +145,11 @@ class JiaoI4(Estimator):
         py = self.p_estimator.py
 
         # % px_xy is a Nx times n_data matrix, calculating p(x_i|x^{i-1},y^{i-1})
-        px_xy = np.zeros((Nx, n_data - self.p_estimator.D))
-        for i_x in range(Nx):
+        px_xy = np.zeros((self.Nx, n_data - self.p_estimator.D))
+        for i_x in range(self.Nx):
             px_xy[i_x, :] = pxy[i_x, :]
-            for j in range(1, Nx):
-                px_xy[i_x, :] = px_xy[i_x, :] + pxy[i_x + j * Nx, :]
+            for j in range(1, self.Nx):
+                px_xy[i_x, :] = px_xy[i_x, :] + pxy[i_x + j * self.Nx, :]
 
         # %calculate P(y|x,X^{i-1},Y^{i-1})
         #temp = np.tile(px_xy, (Nx, 1))
@@ -150,13 +158,13 @@ class JiaoI4(Estimator):
         temp_DI = np.zeros(X.shape[0] - self.p_estimator.D)
         temp_MI = np.zeros(X.shape[0] - self.p_estimator.D)
         temp_rev_DI = np.zeros(X.shape[0] - self.p_estimator.D)
-        for iy in range(Nx):
-            for ix in range(Nx):
-                temp_DI = temp_DI + pxy[ix + iy * Nx, :] * np.log2(pxy[ix + iy * Nx, :] / (py[iy, :] * px_xy[ix, :]))
+        for iy in range(self.Nx):
+            for ix in range(self.Nx):
+                temp_DI = temp_DI + pxy[ix + iy * self.Nx, :] * np.log2(pxy[ix + iy * self.Nx, :] / (py[iy, :] * px_xy[ix, :]))
                 # temp_DI=temp_DI + pxy(ix+(iy-1)*Nx,:).     *log2(pxy(ix+(iy-1)*Nx,:). / (py(iy,:).*  px_xy(ix,:)));
-                temp_MI = temp_MI + pxy[ix + iy * Nx, :] * np.log2(pxy[ix + iy * Nx, :] / (py[iy, :] * px[ix, :]))
+                temp_MI = temp_MI + pxy[ix + iy * self.Nx, :] * np.log2(pxy[ix + iy * self.Nx, :] / (py[iy, :] * px[ix, :]))
                 # temp_MI=temp_MI+  pxy(ix+(iy-1)*Nx,:).*     log2(pxy(ix+(iy-1)*Nx,:)./(py(iy,:).*px(ix,:)));
-                temp_rev_DI = temp_rev_DI + pxy[ix + iy * Nx, :] * np.log2(px_xy[ix, :] / px[ix, :])
+                temp_rev_DI = temp_rev_DI + pxy[ix + iy * self.Nx, :] * np.log2(px_xy[ix, :] / px[ix, :])
                 # temp_rev_DI=temp_rev_DI+ pxy(ix+(iy-1)*Nx,:).      *log2(px_xy(ix,:)./px(ix,:));
         return np.sum(temp_DI), np.sum(temp_rev_DI), np.sum(temp_MI)
 
@@ -170,8 +178,6 @@ class JiaoI4(Estimator):
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
         :return: directed information, reverse directed information, mutual information
         """
-        Nx = np.unique(x_lagged).max() + 1
-        Ny = np.unique(y_lagged).max() + 1
 
         tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
@@ -181,30 +187,30 @@ class JiaoI4(Estimator):
         # iterate over time-lagged trajectory pairs
         d, r, m = 0., 0., 0.
         for ix_time_tau, iy_time_tau in zip(x_lagged, y_lagged):
-            ixy_time_tau = ix_time_tau + Nx * iy_time_tau
+            ixy_time_tau = ix_time_tau + self.Nx * iy_time_tau
 
             # compute probability trajectories from state x_{i-1} to any possible state x_i
             px = tmat_x[ix_time_tau, :]
             py = tmat_y[iy_time_tau, :]
             pxy = tmat_xy[ixy_time_tau, :]
 
-            prob_xi_to_xip1_given_yi = np.zeros((Nx, Nx, Ny))
-            for xi, xip1, yi in itertools.product(*[range(Nx), range(Nx), range(Ny)]):
-                prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + Nx * yi, xip1 + Nx * _y] for _y in range(Ny)])
+            prob_xi_to_xip1_given_yi = np.zeros((self.Nx, self.Nx, self.Ny))
+            for xi, xip1, yi in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny)]):
+                prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + self.Nx * yi, xip1 + self.Nx * _y] for _y in range(self.Ny)])
 
             px_given_y = prob_xi_to_xip1_given_yi[ix_time_tau, :, iy_time_tau]
 
             temp_mi, temp_di, temp_rev_di = np.zeros(len(ix_time_tau)), np.zeros(
                 len(ix_time_tau)), np.zeros(len(ix_time_tau))
 
-            for iy in range(Ny):  # ix, iy now iterating over indicator states, not original state numbers
-                for ix in range(Nx):
-                    pidx = pxy[:, ix + iy * Nx] > 0  # def 0 * log(0) := 0
-                    temp_mi[pidx] = temp_mi[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
-                        pxy[pidx, ix + iy * Nx] / (py[pidx, iy] * px[pidx, ix]))
-                    temp_di[pidx] = temp_di[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
-                        pxy[pidx, ix + iy * Nx] / (py[pidx, iy] * px_given_y[pidx, ix]))
-                    temp_rev_di[pidx] = temp_rev_di[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
+            for iy in range(self.Ny):  # ix, iy now iterating over indicator states, not original state numbers
+                for ix in range(self.Nx):
+                    pidx = pxy[:, ix + iy * self.Nx] > 0  # def 0 * log(0) := 0
+                    temp_mi[pidx] = temp_mi[pidx] + pxy[pidx, ix + iy * self.Nx] * np.log2(
+                        pxy[pidx, ix + iy * self.Nx] / (py[pidx, iy] * px[pidx, ix]))
+                    temp_di[pidx] = temp_di[pidx] + pxy[pidx, ix + iy * self.Nx] * np.log2(
+                        pxy[pidx, ix + iy * self.Nx] / (py[pidx, iy] * px_given_y[pidx, ix]))
+                    temp_rev_di[pidx] = temp_rev_di[pidx] + pxy[pidx, ix + iy * self.Nx] * np.log2(
                         px_given_y[pidx, ix] / px[pidx, ix])
             d += temp_di.mean() / msmlag
             r += temp_rev_di.mean() / msmlag
@@ -223,37 +229,34 @@ class JiaoI4Ensemble(Estimator):
 
     def _stationary_estimator(self, x_lagged, y_lagged):
 
-        Nx = np.unique(x_lagged).max() + 1
-        Ny = np.unique(y_lagged).max() + 1
-
         tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
 
-        statecounts = np.bincount(np.concatenate([_x + Nx * _y for _x, _y in zip(x_lagged, y_lagged)]))
+        statecounts = np.bincount(np.concatenate([_x + self.Nx * _y for _x, _y in zip(x_lagged, y_lagged)]))
 
-        prob_xi_to_xip1_given_yi = np.zeros((Nx, Nx, Ny))
-        for xi, xip1, yi in itertools.product(*[range(Nx), range(Nx), range(Ny)]):
-            prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + Nx * yi, xip1 + Nx * _y] for _y in range(Ny)])
+        prob_xi_to_xip1_given_yi = np.zeros((self.Nx, self.Nx, self.Ny))
+        for xi, xip1, yi in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny)]):
+            prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + self.Nx * yi, xip1 + self.Nx * _y] for _y in range(self.Ny)])
 
         di, rdi, mi = 0., 0., 0.
-        for xi, yi in itertools.product(range(Nx), range(Ny)):
+        for xi, yi in itertools.product(range(self.Nx), range(self.Ny)):
 
-            tmat_y_at_yi_bloated = np.repeat(tmat_y[yi], Nx)
-            tmat_x_at_xi_bloated = np.tile(tmat_x[xi], Ny)
-            prob_xi_xip1_given_yi_at_xi_yi_bloated = np.tile(prob_xi_to_xip1_given_yi[xi, :, yi], Ny)
-            counts_xi_yi = statecounts[xi + Nx * yi]
+            tmat_y_at_yi_bloated = np.repeat(tmat_y[yi], self.Nx)
+            tmat_x_at_xi_bloated = np.tile(tmat_x[xi], self.Ny)
+            prob_xi_xip1_given_yi_at_xi_yi_bloated = np.tile(prob_xi_to_xip1_given_yi[xi, :, yi], self.Ny)
+            counts_xi_yi = statecounts[xi + self.Nx * yi]
 
-            idx = np.logical_and(tmat_xy[xi + Nx * yi] > 0,
+            idx = np.logical_and(tmat_xy[xi + self.Nx * yi] > 0,
                                  tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated > 0)
 
-            di += counts_xi_yi * np.sum(tmat_xy[xi + Nx * yi][idx] * np.log2(
-                tmat_xy[xi + Nx * yi][idx] / (tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated)[idx]))
+            di += counts_xi_yi * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
+                tmat_xy[xi + self.Nx * yi][idx] / (tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated)[idx]))
 
-            rdi += counts_xi_yi * np.sum(tmat_xy[xi + Nx * yi][idx] * np.log2(
+            rdi += counts_xi_yi * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
                 prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] / tmat_x_at_xi_bloated[idx]))
-            mi += counts_xi_yi * np.sum(tmat_xy[xi + Nx * yi][idx] * np.log2(
-                tmat_xy[xi + Nx * yi][idx] / (tmat_y_at_yi_bloated * tmat_x_at_xi_bloated)[idx]))
+            mi += counts_xi_yi * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
+                tmat_xy[xi + self.Nx * yi][idx] / (tmat_y_at_yi_bloated * tmat_x_at_xi_bloated)[idx]))
         di = di / statecounts.sum()
         mi = mi / statecounts.sum()
         rdi = rdi / statecounts.sum()

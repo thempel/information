@@ -11,8 +11,11 @@ class MSMProbabilities:
         self.is_stationary_estimate = True
 
     def estimate(self, X, Y):
-        Nx = np.unique(X).max() + 1
-        Ny = np.unique(Y).max() + 1
+        if not isinstance(X, list): X = [X]
+        if not isinstance(Y, list): Y = [Y]
+
+        Nx = np.unique(np.concatenate(X)).max() + 1
+        Ny = np.unique(np.concatenate(Y)).max() + 1
 
         if not self.tmat_ck_estimate:
             self.tmat_x = pyemma.msm.estimate_markov_model(X, self.msmlag, reversible=self.reversible).transition_matrix
