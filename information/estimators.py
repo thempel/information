@@ -104,10 +104,9 @@ class JiaoI4:
                 print(a1.shape, a2.shape)
                 print('something wrong with traj lengths')
                 return
-        # DI is invariant under boolean inversion, so 2 state trajs don't require case differentiation
 
-        assert set(np.concatenate(X)) == {0, 1}
-        assert set(np.concatenate(Y)) == {0, 1}
+        assert np.unique(X).max() == tmat_x.shape[0] - 1 and np.unique(X).min() == 0
+        assert np.unique(Y).max() == tmat_y.shape[0] - 1 and np.unique(Y).min() == 0
 
         x_lagged = lag_observations(X, msmlag)
         y_lagged = lag_observations(Y, msmlag)
@@ -131,38 +130,37 @@ def _directed_information_estimator(x_lagged, y_lagged, tmat_x, tmat_y, tmat_xy,
     :param msmlag: Markov model lag time
     :return: directed information, reverse directed information, mutual information
     """
+    Nx = np.unique(x_lagged).max() + 1
+    Ny = np.unique(y_lagged).max() + 1
 
-    def p_xi_to_xip1_given_y1_y1p1(xi, xip1, yi):
-        return tmat_xy[xi + 2 * yi, xip1 + 2 * 0] + tmat_xy[
-            xi + 2 * yi, xip1 + 2 * 1]
 
     # iterate over time-lagged trajectory pairs
     d, r, m = 0., 0., 0.
     for indicator_state_i_x_time_tau, indicator_state_i_y_time_tau in zip(x_lagged, y_lagged):
-        indicator_state_i_xy_time_tau = indicator_state_i_x_time_tau + 2 * indicator_state_i_y_time_tau
+        indicator_state_i_xy_time_tau = indicator_state_i_x_time_tau + Nx * indicator_state_i_y_time_tau
 
         # compute probability trajectories from state x_{i-1} to any possible state x_i
         px = tmat_x[indicator_state_i_x_time_tau, :]
         py = tmat_y[indicator_state_i_y_time_tau, :]
         pxy = tmat_xy[indicator_state_i_xy_time_tau, :]
 
-        prob_xi_to_xip1_given_yi = np.zeros((2, 2, 2))
-        for combination in itertools.product(*[range(2) for _ in range(3)]):
-            prob_xi_to_xip1_given_yi[combination] = p_xi_to_xip1_given_y1_y1p1(*combination)
+        prob_xi_to_xip1_given_yi = np.zeros((Nx, Nx, Ny))
+        for xi, xip1, yi in itertools.product(*[range(Nx), range(Nx), range(Ny)]):
+            prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + Nx * yi, xip1 + Nx * _y] for _y in range(Ny)])
 
         px_given_y = prob_xi_to_xip1_given_yi[indicator_state_i_x_time_tau, :, indicator_state_i_y_time_tau]
 
         temp_mi, temp_di, temp_rev_di = np.zeros(len(indicator_state_i_x_time_tau)), np.zeros(
             len(indicator_state_i_x_time_tau)), np.zeros(len(indicator_state_i_x_time_tau))
 
-        for iy in range(2):  # ix, iy now iterating over indicator states, not original state numbers
-            for ix in range(2):
-                pidx = pxy[:, ix + iy * 2] > 0  # def 0 * log(0) := 0
-                temp_mi[pidx] = temp_mi[pidx] + pxy[pidx, ix + iy * 2] * np.log2(
-                    pxy[pidx, ix + iy * 2] / (py[pidx, iy] * px[pidx, ix]))
-                temp_di[pidx] = temp_di[pidx] + pxy[pidx, ix + iy * 2] * np.log2(
-                    pxy[pidx, ix + iy * 2] / (py[pidx, iy] * px_given_y[pidx, ix]))
-                temp_rev_di[pidx] = temp_rev_di[pidx] + pxy[pidx, ix + iy * 2] * np.log2(
+        for iy in range(Ny):  # ix, iy now iterating over indicator states, not original state numbers
+            for ix in range(Nx):
+                pidx = pxy[:, ix + iy * Nx] > 0  # def 0 * log(0) := 0
+                temp_mi[pidx] = temp_mi[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
+                    pxy[pidx, ix + iy * Nx] / (py[pidx, iy] * px[pidx, ix]))
+                temp_di[pidx] = temp_di[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
+                    pxy[pidx, ix + iy * Nx] / (py[pidx, iy] * px_given_y[pidx, ix]))
+                temp_rev_di[pidx] = temp_rev_di[pidx] + pxy[pidx, ix + iy * Nx] * np.log2(
                     px_given_y[pidx, ix] / px[pidx, ix])
         d += temp_di.mean() / msmlag
         r += temp_rev_di.mean() / msmlag
