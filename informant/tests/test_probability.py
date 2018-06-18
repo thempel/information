@@ -1,12 +1,12 @@
 import unittest
-import information
+import informant
 import numpy as np
 import msmtools
 
 
 class TestProbabilitySimple(unittest.TestCase):
     def test_MSMProb(self):
-        prob_est = information.MSMProbabilities(msmlag=1)
+        prob_est = informant.MSMProbabilities(msmlag=1)
         A = np.random.randint(0, 2, 100)
         B = np.random.randint(0, 2, 100)
         prob_est.estimate(A, B)
@@ -16,7 +16,7 @@ class TestProbabilitySimple(unittest.TestCase):
         self.assertTrue(msmtools.analysis.is_transition_matrix(prob_est.tmat_xy))
 
     def test_CTWProb(self):
-        prob_est = information.CTWProbabilities(D=3)
+        prob_est = informant.CTWProbabilities(D=3)
         A = np.random.randint(0, 2, 100)
         B = np.random.randint(0, 2, 100)
         prob_est.estimate(A, B)

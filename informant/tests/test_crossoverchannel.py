@@ -1,5 +1,5 @@
 import unittest
-import information
+import informant
 import numpy as np
 import msmtools
 
@@ -10,7 +10,7 @@ def entropy1D(x):
 
 class TestCrossover(unittest.TestCase):
     """
-    Cross-over channel test. Directed information can be computed analytically.
+    Cross-over channel test. Directed informant can be computed analytically.
     Class sets up a simple binary channel with cross-overs, no delay.
     """
     @classmethod
@@ -33,8 +33,8 @@ class TestCrossover(unittest.TestCase):
         Test MSM probability and I4 estimator.
         :return:
         """
-        prob = information.MSMProbabilities().estimate(self.X, self.Y)
-        estimator = information.JiaoI4(prob)
+        prob = informant.MSMProbabilities().estimate(self.X, self.Y)
+        estimator = informant.JiaoI4(prob)
         estimator.estimate(self.X, self.Y)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
@@ -46,8 +46,8 @@ class TestCrossover(unittest.TestCase):
         Test MSM probability and I4 ensemble estimator.
         :return:
         """
-        prob = information.MSMProbabilities().estimate(self.X, self.Y)
-        estimator = information.JiaoI4Ensemble(prob)
+        prob = informant.MSMProbabilities().estimate(self.X, self.Y)
+        estimator = informant.JiaoI4Ensemble(prob)
         estimator.estimate(self.X, self.Y)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
@@ -59,8 +59,8 @@ class TestCrossover(unittest.TestCase):
         Test CTW probabilities and I4 estimator.
         :return:
         """
-        prob = information.CTWProbabilities(5).estimate(self.X, self.Y)
-        estimator = information.JiaoI4(prob)
+        prob = informant.CTWProbabilities(5).estimate(self.X, self.Y)
+        estimator = informant.JiaoI4(prob)
         estimator.estimate(self.X, self.Y)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
@@ -72,8 +72,8 @@ class TestCrossover(unittest.TestCase):
         Test CTW probabilities and I4 estimator.
         :return:
         """
-        prob = information.CTWProbabilities(5).estimate(self.X, self.Y)
-        estimator = information.JiaoI3(prob)
+        prob = informant.CTWProbabilities(5).estimate(self.X, self.Y)
+        estimator = informant.JiaoI3(prob)
         estimator.estimate(self.X, self.Y)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
@@ -89,8 +89,8 @@ class TestCrossover(unittest.TestCase):
         Y = self.Y.copy()
         idx = Y == 1
         Y[idx] = self.Y[idx] + np.random.randint(0, 2, size=self.Y[idx].shape[0])
-        prob = information.MSMProbabilities().estimate(self.X, Y)
-        estimator = information.JiaoI4(prob)
+        prob = informant.MSMProbabilities().estimate(self.X, Y)
+        estimator = informant.JiaoI4(prob)
         estimator.estimate(self.X, Y)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
@@ -107,8 +107,8 @@ class TestCrossover(unittest.TestCase):
         Y = self.Y.copy()
         idx = Y == 1
         Y[idx] = self.Y[idx] + np.random.randint(0, 2, size=self.Y[idx].shape[0])
-        prob = information.CTWProbabilities(5).estimate(self.X, Y)
-        estimator = information.JiaoI4(prob)
+        prob = informant.CTWProbabilities(5).estimate(self.X, Y)
+        estimator = informant.JiaoI4(prob)
         estimator.estimate(self.X, Y)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
@@ -124,8 +124,8 @@ class TestCrossover(unittest.TestCase):
         Y = self.Y.copy()
         idx = Y == 1
         Y[idx] = self.Y[idx] + np.random.randint(0, 2, size=self.Y[idx].shape[0])
-        prob = information.MSMProbabilities().estimate(self.X, Y)
-        estimator = information.JiaoI4Ensemble(prob)
+        prob = informant.MSMProbabilities().estimate(self.X, Y)
+        estimator = informant.JiaoI4Ensemble(prob)
         estimator.estimate(self.X, Y)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
@@ -134,13 +134,13 @@ class TestCrossover(unittest.TestCase):
 
     def test_congruenceI3I4_CTW(self):
 
-        prob_est = information.CTWProbabilities(5)
+        prob_est = informant.CTWProbabilities(5)
         prob_est.estimate(self.X, self.Y)
 
-        estimator4 = information.JiaoI4(prob_est)
+        estimator4 = informant.JiaoI4(prob_est)
         estimator4.estimate(self.X, self.Y)
 
-        estimator3 = information.JiaoI3(prob_est)
+        estimator3 = informant.JiaoI3(prob_est)
         estimator3.estimate(self.X, self.Y)
 
         self.assertAlmostEqual(estimator3.d, estimator4.d, places=2)
@@ -149,13 +149,13 @@ class TestCrossover(unittest.TestCase):
 
     def test_congruenceI3I4_MSM(self):
 
-        prob_est = information.MSMProbabilities(reversible=False)
+        prob_est = informant.MSMProbabilities(reversible=False)
         prob_est.estimate(self.X, self.Y)
 
-        estimator4 = information.JiaoI4(prob_est)
+        estimator4 = informant.JiaoI4(prob_est)
         estimator4.estimate(self.X, self.Y)
 
-        estimator3 = information.JiaoI3(prob_est)
+        estimator3 = informant.JiaoI3(prob_est)
         estimator3.estimate(self.X, self.Y)
 
         self.assertAlmostEqual(estimator3.d, estimator4.d, places=1)
@@ -163,7 +163,7 @@ class TestCrossover(unittest.TestCase):
         self.assertAlmostEqual(estimator3.m, estimator4.m, places=1)
 
     def test_symmetric_estimate(self):
-        prob_est = information.MSMProbabilities().estimate(self.X, self.Y)
-        estimator = information.JiaoI4(prob_est).symmetrized_estimate(self.X, self.Y)
+        prob_est = informant.MSMProbabilities().estimate(self.X, self.Y)
+        estimator = informant.JiaoI4(prob_est).symmetrized_estimate(self.X, self.Y)
 
         self.assertGreater(estimator.d, estimator.r)

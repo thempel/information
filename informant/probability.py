@@ -1,6 +1,6 @@
 import numpy as np
 import pyemma
-from information import utils
+from informant import utils
 
 class MSMProbabilities:
     """

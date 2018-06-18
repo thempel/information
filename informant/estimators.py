@@ -1,17 +1,17 @@
 import itertools
 import numpy as np
 from bhmm import lag_observations
-from information import utils
+from informant import utils
 
 
 class Estimator(object):
-    """ Base class for directed information estimators
+    """ Base class for directed informant estimators
 
     """
     def __init__(self, probability_estimator):
         """
 
-        :param probability_estimator: information.ProbabilityEstimator class
+        :param probability_estimator: informant.ProbabilityEstimator class
         """
         self.p_estimator = probability_estimator
         self.d, self.r, self.m = None, None, None
@@ -19,7 +19,7 @@ class Estimator(object):
 
     def estimate(self, A, B):
         """
-        Convenience function for directed, reverse directed and mutual information estimation.
+        Convenience function for directed, reverse directed and mutual informant estimation.
         :param A: time series A
         :param B: time series B
         :return: self
@@ -38,9 +38,9 @@ class Estimator(object):
 
     def symmetrized_estimate(self, A, B):
         """
-        Ensures symmetric results for directed, reverse directed and mutual information
+        Ensures symmetric results for directed, reverse directed and mutual informant
         estimation, I(A->B)_rev = I(B->A). This is not the case for the original definition
-        of reverse information by Jiao et al. and the results are to be understood qualitatively
+        of reverse informant by Jiao et al. and the results are to be understood qualitatively
         only.
         :param A: time series A
         :param B: time series B
@@ -78,7 +78,7 @@ class Estimator(object):
 
     def stationary_estimate(self, X, Y):
         """
-        Directed information estimation on discrete trajectories with Markov model
+        Directed informant estimation on discrete trajectories with Markov model
         probability estimates.
 
         :param X: Time-series 1
@@ -103,7 +103,7 @@ class Estimator(object):
 
     def nonstationary_estimate(self, A, B):
         """
-        Directed information estimation using non-stationary probability assignments.
+        Directed informant estimation using non-stationary probability assignments.
         :param A: Time series 1
         :param B: Time series 2
         :return:
@@ -121,8 +121,8 @@ class JiaoI4(Estimator):
         """
         Original estimator I4 from Jiao et al. Original docstring:
 
-        Function `compute_DI_MI' calculates the directed information I(X^n-->
-        Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
+        Function `compute_DI_MI' calculates the directed informant I(X^n-->
+        Y^n), mutual informant I(X^n; Y^n) and reverse directed informant I(Y^{n-1}-->X^n)
         for any positive integer n smaller than the length of X and Y.
 
         X and Y: two input sequences;
@@ -199,13 +199,13 @@ class JiaoI4(Estimator):
 
     def _stationary_estimator(self, x_lagged, y_lagged):
         """
-        Implementation of directed information estimator I4 from [1] using Markov model
+        Implementation of directed informant estimator I4 from [1] using Markov model
         probability estimates.
 
         [1] Jiao et al, Universal Estimation of Directed Information, 2013.
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
-        :return: directed information, reverse directed information, mutual information
+        :return: directed informant, reverse directed informant, mutual informant
         """
 
         tmat_x = self.p_estimator.tmat_x
@@ -307,8 +307,8 @@ class JiaoI3(Estimator):
         CAUTION: ONLY IMPLEMENTED AS REFERENCE, should be thoroughly tested.
         Original docstring:
 
-        Function `compute_DI_MI' calculates the directed information I(X^n-->
-        Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
+        Function `compute_DI_MI' calculates the directed informant I(X^n-->
+        Y^n), mutual informant I(X^n; Y^n) and reverse directed informant I(Y^{n-1}-->X^n)
         for any positive integer n smaller than the length of X and Y.
 
         X and Y: two input sequences;
@@ -388,13 +388,13 @@ class JiaoI3(Estimator):
 
     def _stationary_estimator(self, x_lagged, y_lagged):
         """
-        Implementation of directed information estimator I4 from [1] using Markov model
+        Implementation of directed informant estimator I4 from [1] using Markov model
         probability estimates.
 
         [1] Jiao et al, Universal Estimation of Directed Information, 2013.
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
-        :return: directed information, reverse directed information, mutual information
+        :return: directed informant, reverse directed informant, mutual informant
         """
 
         tmat_x = self.p_estimator.tmat_x
