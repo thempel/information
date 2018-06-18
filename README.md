@@ -41,4 +41,5 @@ implemented with the CTW-algorithm in matlab [2].
 [1] J. Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
     Estimation of Directed Information',
     http://arxiv.org/abs/1201.2334.
+
 [2] https://github.com/EEthinker/Universal_directed_information
