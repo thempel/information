@@ -9,13 +9,13 @@ if a conditional probability assignment for the time series can be made.
 Since there are several ways of assigning probabilities and several
 estimators for directed information, the API works like follows:
 ```python
-# A, B are two time series of the same length.
+# A, B are two discrete, finite-alphabet time series of the same length.
 # first, compute the probabilities
 p_estimator = SomeProbabilityEstimator(**kwargs)
 p_estimator.estimate(A, B)
 
 # second, estimate directed, reverse directed and mutual information
-i_estimator = SomeInformationEstimator(**kwargs)
+i_estimator = SomeInformationEstimator(p_estimator)
 i_estimator.estimate(A, B)
 
 # third, access directed, reverse directed and mutual information:
