@@ -35,7 +35,7 @@ This code relies on estimators described by [1] that have been
 implemented with the CTW-algorithm in matlab [2].
 1) I4 estimator (`JiaoI4`)
 2) I4 ensemble average estimator from MSM probabilities (`JiaoI4Ensemble`)
-3) I3 estimator for reference ('JiaoI3') (not yet thoroughly tested)
+3) I3 estimator for reference (`JiaoI3`) (not yet thoroughly tested)
 
 ### Literature
 [1] J. Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
