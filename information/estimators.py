@@ -211,6 +211,7 @@ class JiaoI4(Estimator):
 
             prob_xi_to_xip1_given_yi = np.zeros((self.Nx, self.Nx, self.Ny))
             for xi, xip1, yi in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny)]):
+                # TODO: check if this is true. (sum over probabilities w/o normalization)
                 prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + self.Nx * yi, xip1 + self.Nx * _y] for _y in range(self.Ny)])
 
             px_given_y = prob_xi_to_xip1_given_yi[ix_time_tau, :, iy_time_tau]

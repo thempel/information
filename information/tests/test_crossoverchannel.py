@@ -41,6 +41,18 @@ class TestCrossover(unittest.TestCase):
         self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
         self.assertLess(estimator.r, .1 * self.true_value_DI)
 
+    def test_MSMEnsembleInfo(self):
+        """
+        Test MSM probability and I4 ensemble estimator.
+        :return:
+        """
+        prob = information.MSMProbabilities().estimate(self.X, self.Y)
+        estimator = information.JiaoI4Ensemble(prob)
+        estimator.estimate(self.X, self.Y)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)
 
     def test_CTWInfo(self):
         """
@@ -84,6 +96,23 @@ class TestCrossover(unittest.TestCase):
         Y[idx] = self.Y[idx] + np.random.randint(0, 2, size=self.Y[idx].shape[0])
         prob = information.CTWProbabilities(5).estimate(self.X, Y)
         estimator = information.JiaoI4(prob)
+        estimator.estimate(self.X, Y)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)
+
+    def test_MSMEnsembleInfo_multi(self):
+        """
+        Tests if polluting one state of the second trajectory with random noise alters
+        the I4 ensemble estimator result for MSM probabilities.
+        :return:
+        """
+        Y = self.Y.copy()
+        idx = Y == 1
+        Y[idx] = self.Y[idx] + np.random.randint(0, 2, size=self.Y[idx].shape[0])
+        prob = information.MSMProbabilities().estimate(self.X, Y)
+        estimator = information.JiaoI4Ensemble(prob)
         estimator.estimate(self.X, Y)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
