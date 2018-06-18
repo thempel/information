@@ -1,6 +1,6 @@
 import numpy as np
 import pyemma
-
+from information import utils
 
 class MSMProbabilities:
     """
@@ -76,18 +76,10 @@ class CTWProbabilities:
             raise RuntimeError('Some trajectories are shorter than requested CT depth self.D.')
 
         for _X, _Y in zip(X, Y):
-            if np.unique(_X).max() + 1 > len(set(_X)):
-                mapper = np.zeros(np.unique(_X).max()+1) - 1
-                mapper[np.unique(_X)] = list(range(np.unique(_X).shape[0]))
-                _x = mapper[_X]
-            else:
-                _x = _X
-            if np.unique(_Y).max() + 1 > len(set(_Y)):
-                mapper = np.zeros(np.unique(_Y).max()+1) - 1
-                mapper[np.unique(_Y)] = list(range(np.unique(_Y).shape[0]))
-                _y = mapper[_Y]
-            else:
-                _y = _Y
+            # map discrete time series to set {0, 1, ..., n_states_here}
+            _x = utils.relabel_dtrajs(_X)
+            _y = utils.relabel_dtrajs(_Y)
+
             Nx_subset = (np.unique(_x).max() + 1).astype(int)
             Ny_subset = (np.unique(_y).max() + 1).astype(int)
             #if not Nx_subset == Ny_subset:
@@ -120,7 +112,7 @@ class CTWProbabilities:
         n = len(x)
         if Nx == 1:
             # if only one state exists, transition probability is one
-          return np.ones(x.shape[0] - D)
+            return np.ones(x.shape[0] - D)
         elif not np.floor((Nx ** (D + 1) - 1) / (Nx - 1)) == (Nx ** (D + 1) - 1) / (Nx - 1):
             print(np.floor((Nx ** (D + 1) - 1) / (Nx - 1)), (Nx ** (D + 1) - 1) / (Nx - 1))
             print(Nx, D)

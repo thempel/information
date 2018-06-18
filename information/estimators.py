@@ -1,6 +1,7 @@
 import itertools
 import numpy as np
 from bhmm import lag_observations
+from information import utils
 
 
 class Estimator(object):
@@ -124,19 +125,9 @@ class JiaoI4(Estimator):
         """
         dis, rdis, mis = np.zeros(len(X)), np.zeros(len(X)), np.zeros(len(X))
         for n, (_X, _Y) in enumerate(zip(X, Y)):
-            # re-label states if necessary
-            if np.unique(_X).max() + 1 > len(set(_X)):
-                mapper = np.zeros(np.unique(_X).max()+1) - 1
-                mapper[np.unique(_X)] = list(range(np.unique(_X).shape[0]))
-                _x = mapper[_X]
-            else:
-                _x = _X
-            if np.unique(_Y).max() + 1 > len(set(_Y)):
-                mapper = np.zeros(np.unique(_Y).max()+1) - 1
-                mapper[np.unique(_Y)] = list(range(np.unique(_Y).shape[0]))
-                _y = mapper[_Y]
-            else:
-                _y = _Y
+            # map discrete time series to set {0, 1, ..., n_states_here}
+            _x = utils.relabel_dtrajs(_X)
+            _y = utils.relabel_dtrajs(_Y)
 
 
             Nx_subset = (np.unique(_x).max() + 1).astype(int)
