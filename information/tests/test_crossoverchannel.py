@@ -67,6 +67,19 @@ class TestCrossover(unittest.TestCase):
         self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
         self.assertLess(estimator.r, .1 * self.true_value_DI)
 
+    def test_CTWInfoI3(self):
+        """
+        Test CTW probabilities and I4 estimator.
+        :return:
+        """
+        prob = information.CTWProbabilities(5).estimate(self.X, self.Y)
+        estimator = information.JiaoI3(prob)
+        estimator.estimate(self.X, self.Y)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)
+
     def test_MSMInfo_multi(self):
         """
         Tests if polluting one state of the second trajectory with random noise alters
@@ -118,3 +131,18 @@ class TestCrossover(unittest.TestCase):
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
         self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
         self.assertLess(estimator.r, .1 * self.true_value_DI)
+
+    def test_congruenceI3I4_CTW(self):
+
+        prob_est = information.CTWProbabilities(5)
+        prob_est.estimate(self.X, self.Y)
+
+        estimator4 = information.JiaoI4(prob_est)
+        estimator4.estimate(self.X, self.Y)
+
+        estimator3 = information.JiaoI3(prob_est)
+        estimator3.estimate(self.X, self.Y)
+
+        self.assertAlmostEqual(estimator3.d, estimator4.d, places=2)
+        self.assertAlmostEqual(estimator3.r, estimator4.r, places=2)
+        self.assertAlmostEqual(estimator3.m, estimator4.m, places=2)

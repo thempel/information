@@ -120,3 +120,64 @@ class TestSuperSimple(unittest.TestCase):
         self.assertGreaterEqual(estimator.m, 0)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+
+    def test_CTWInfoI3(self):
+        prob_est = information.CTWProbabilities(D=3)
+        A = np.random.randint(0, 2, 100)
+        B = np.random.randint(0, 2, 100)
+        prob_est.estimate(A, B)
+
+        estimator = information.JiaoI3(prob_est)
+
+        estimator.estimate(A, B)
+
+        self.assertGreaterEqual(estimator.d, 0)
+        self.assertGreaterEqual(estimator.r, 0)
+        self.assertGreaterEqual(estimator.m, 0)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+
+
+    def test_MSMInfoI3(self):
+        A = np.random.randint(0, 2, size=1000)
+        B = np.random.randint(0, 2, size=1000)
+        prob_est = information.MSMProbabilities()
+        prob_est.estimate(A, B)
+
+        estimator4 = information.JiaoI4(prob_est)
+        estimator4.estimate(A, B)
+
+        estimator3 = information.JiaoI3(prob_est)
+        estimator3.estimate(A, B)
+        self.assertGreaterEqual(estimator3.d, 0)
+        self.assertGreaterEqual(estimator3.r, 0)
+        self.assertGreaterEqual(estimator3.m, 0)
+
+        self.assertAlmostEqual(estimator3.d + estimator3.r, estimator3.m, places=2)
+
+        p = 0.3
+        eps = .2
+        N = int(1e5)
+        T = np.array([[1 - p, p], [p, 1 - p]])
+        A = msmtools.generation.generate_traj(T, N)
+        _errbits = np.random.rand(N) < eps
+        B = A.copy()
+        B[_errbits] = 1 - B[_errbits]
+
+        prob_est = information.MSMProbabilities(reversible=False)
+        prob_est.estimate(A, B)
+
+        estimator4 = information.JiaoI4(prob_est)
+        estimator4.estimate(A, B)
+
+        estimator3 = information.JiaoI3(prob_est)
+        estimator3.estimate(A, B)
+        self.assertGreaterEqual(estimator3.d, 0)
+        self.assertGreaterEqual(estimator3.r, 0)
+        self.assertGreaterEqual(estimator3.m, 0)
+
+        self.assertAlmostEqual(estimator3.d + estimator3.r, estimator3.m, places=2)
+
+        self.assertAlmostEqual(estimator3.d, estimator4.d, places=1)
+        self.assertAlmostEqual(estimator3.r, estimator4.r, places=1)
+        self.assertAlmostEqual(estimator3.m, estimator4.m, places=1)
