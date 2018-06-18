@@ -146,3 +146,18 @@ class TestCrossover(unittest.TestCase):
         self.assertAlmostEqual(estimator3.d, estimator4.d, places=2)
         self.assertAlmostEqual(estimator3.r, estimator4.r, places=2)
         self.assertAlmostEqual(estimator3.m, estimator4.m, places=2)
+
+    def test_congruenceI3I4_MSM(self):
+
+        prob_est = information.MSMProbabilities(reversible=False)
+        prob_est.estimate(self.X, self.Y)
+
+        estimator4 = information.JiaoI4(prob_est)
+        estimator4.estimate(self.X, self.Y)
+
+        estimator3 = information.JiaoI3(prob_est)
+        estimator3.estimate(self.X, self.Y)
+
+        self.assertAlmostEqual(estimator3.d, estimator4.d, places=1)
+        self.assertAlmostEqual(estimator3.r, estimator4.r, places=1)
+        self.assertAlmostEqual(estimator3.m, estimator4.m, places=1)

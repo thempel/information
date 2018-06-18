@@ -272,11 +272,17 @@ class JiaoI4Ensemble(Estimator):
 class JiaoI3(Estimator):
     r"""Estimator for Jiao et al I3 with CTW and MSM probabilities"""
     def __init__(self, probability_estimator):
+        """
+        Implementation I3 estimator by Jiao et al.
+        CAUTION: ONLY IMPLEMENTED AS REFERENCE, should be thoroughly tested.
+        """
         super(JiaoI3, self).__init__(probability_estimator)
 
     def _nonstationary_estimator(self, X, Y):
         """
-        Original estimator I4 from Jiao et al. Original docstring:
+        Original estimator I3 by Jiao et al.
+        CAUTION: ONLY IMPLEMENTED AS REFERENCE, should be thoroughly tested.
+        Original docstring:
 
         Function `compute_DI_MI' calculates the directed information I(X^n-->
         Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
@@ -343,13 +349,14 @@ class JiaoI3(Estimator):
             temp_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
             temp_MI = np.zeros(_x.shape[0] - self.p_estimator.D)
             temp_rev_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
+            t = np.arange(py_x_xy.shape[1], dtype=int)
             for iy in range(Ny_subset):
-                    temp_DI = temp_DI + py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, range(py_x_xy.shape[1])] * \
-                                        np.log2(py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, range(py_x_xy.shape[1])] /\
+                    temp_DI = temp_DI + py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, t] * \
+                                        np.log2(py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, t] /\
                                                 py[iy])
-                    temp_MI = temp_MI + py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, range(py_x_xy.shape[1])] * \
-                                        np.log2(pxy[_x[self.p_estimator.D:] + Nx_subset * iy, range(py_x_xy.shape[1])] / \
-                                                (py[iy] * px[_x[self.p_estimator.D:], range(px.shape[1])]))
+                    temp_MI = temp_MI + py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, t] * \
+                                        np.log2(pxy[_x[self.p_estimator.D:] + Nx_subset * iy, t] / \
+                                                (py[iy] * px[_x[self.p_estimator.D:], t]))
                     temp_rev_DI = temp_rev_DI + px_xy[iy] * np.log2(px_xy[iy] / px[iy])
 
             dis[n], rdis[n], mis[n] = np.mean(temp_DI), np.mean(temp_rev_DI), np.mean(temp_MI)
@@ -392,27 +399,17 @@ class JiaoI3(Estimator):
 
             temp_mi, temp_di, temp_rev_di = np.zeros(len(ix_time_tau)), np.zeros(
                 len(ix_time_tau)), np.zeros(len(ix_time_tau))
-
-            #for iy in range(self.Ny):  # ix, iy now iterating over indicator states, not original state numbers
-            #    for ix in range(self.Nx):
-            #        pidx = pxy[:, ix + iy * self.Nx] > 0  # def 0 * log(0) := 0
-            #        temp_mi[pidx] = temp_mi[pidx] + py_given_y_XY[pidx, ix + iy * self.Nx] * np.log2(
-            #            pxy[pidx, ix + iy * self.Nx] / (py[pidx, iy] * px[pidx, ix]))
-            #        temp_di[pidx] = temp_di[pidx] + py_given_y_XY[pidx, ix + iy * self.Nx] * np.log2(
-            #            py_given_y_XY[pidx, ix + iy * self.Nx] / py[pidx, iy])
-            #        temp_rev_di[pidx] = temp_rev_di[pidx] + px_given_y[pidx, ix] * np.log2(
-            #            px_given_y[pidx, ix] / px[pidx, ix])
-
+            t = np.arange(py_given_y_XY.shape[0], dtype=int)
             for iy in range(self.Ny):
-                # pidx = pxy[:, ix + iy * self.Nx] > 0  # def 0 * log(0) := 0
+                pidx = (py_given_y_XY[range(py_given_y_XY.shape[0]), ix_time_tau + self.Nx * iy] > 0).squeeze()  # def 0 * log(0) := 0
 
-                temp_di = temp_di + py_given_y_XY[range(py_given_y_XY.shape[0]), x_lagged + self.Nx * iy] * \
-                                    np.log2(py_given_y_XY[range(py_given_y_XY.shape[0]), x_lagged + self.Nx * iy] / \
-                                            py[:, iy])
-                temp_mi = temp_mi + py_given_y_XY[range(py_given_y_XY.shape[0]), x_lagged + self.Nx * iy] * \
-                                    np.log2(pxy[range(py_given_y_XY.shape[0]), x_lagged + self.Nx * iy] / \
-                                            (py[:, iy] * px[range(py_given_y_XY.shape[0]), x_lagged]))
-                temp_rev_di = temp_rev_di + px_given_y[:, iy] * np.log2(px_given_y[:, iy] / px[:, iy])
+                temp_di[pidx] = temp_di[pidx] + py_given_y_XY[t[pidx], ix_time_tau[pidx] + self.Nx * iy] * \
+                                    np.log2(py_given_y_XY[t[pidx], ix_time_tau[pidx] + self.Nx * iy] / \
+                                            py[pidx, iy])
+                temp_mi[pidx] = temp_mi[pidx] + py_given_y_XY[t[pidx], ix_time_tau[pidx] + self.Nx * iy] * \
+                                    np.log2(pxy[t[pidx], ix_time_tau[pidx] + self.Nx * iy] / \
+                                            (py[pidx, iy] * px[t[pidx], ix_time_tau[pidx]]))
+                temp_rev_di[pidx] = temp_rev_di[pidx] + px_given_y[pidx, iy] * np.log2(px_given_y[pidx, iy] / px[pidx, iy])
 
             d += temp_di.mean() / msmlag
             r += temp_rev_di.mean() / msmlag
