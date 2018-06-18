@@ -179,7 +179,7 @@ class JiaoI4(Estimator):
                     # temp_MI=temp_MI+  pxy(ix+(iy-1)*Nx,:).*     log2(pxy(ix+(iy-1)*Nx,:)./(py(iy,:).*px(ix,:)));
                     temp_rev_DI = temp_rev_DI + pxy[ix + iy * Nx_subset] * np.log2(px_xy[ix] / px[ix])
                     # temp_rev_DI=temp_rev_DI+ pxy(ix+(iy-1)*Nx,:).      *log2(px_xy(ix,:)./px(ix,:));
-            dis[n], rdis[n], mis[n] = np.sum(temp_DI), np.sum(temp_rev_DI), np.sum(temp_MI)
+            dis[n], rdis[n], mis[n] = np.mean(temp_DI), np.mean(temp_rev_DI), np.mean(temp_MI)
 
         return dis.mean(), rdis.mean(), mis.mean()
 

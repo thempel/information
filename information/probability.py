@@ -41,6 +41,7 @@ class MSMProbabilities:
             print(self.tmat_x.shape, self.tmat_y.shape, self.tmat_xy.shape)
             raise NotImplementedError('Combined model is not showing all combinatorial states. Try non-reversible?')
 
+        return self
 
 class CTWProbabilities:
     def __init__(self, D):
@@ -80,6 +81,8 @@ class CTWProbabilities:
             self.pxy.append(self._ctwalgorithm(_x + Nx_subset * _y, Nx_subset * Ny_subset, self.D))
             self.px.append(self._ctwalgorithm(_x, Nx_subset, self.D))
             self.py.append(self._ctwalgorithm(_y, Ny_subset, self.D))
+
+        return self
 
     def _ctwalgorithm(self, x, Nx, D):
         """
