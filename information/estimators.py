@@ -19,21 +19,12 @@ class Estimator(object):
 
     def estimate(self, A, B):
         """
-        Convenience function for directed, reverse directed estimation.
+        Convenience function for directed, reverse directed and mutual information estimation.
         :param A: time series A
         :param B: time series B
         :return: self
         """
-        if not isinstance(A, list): A = [A]
-        if not isinstance(B, list): B = [B]
-        assert isinstance(A[0], np.ndarray)
-        assert isinstance(B[0], np.ndarray)
-
-        for a1, a2 in zip(A, B):
-            if a1.shape[0] != a2.shape[0]:
-                print(a1.shape, a2.shape)
-                print('something wrong with traj lengths')
-                return
+        A, B = utils.ensure_dtraj_format(A, B)
 
         self.Nx = np.unique(np.concatenate(A)).max() + 1
         self.Ny = np.unique(np.concatenate(B)).max() + 1
@@ -42,6 +33,38 @@ class Estimator(object):
             self.d, self.r, self.m = self.stationary_estimate(A, B)
         else:
             self.d, self.r, self.m = self.nonstationary_estimate(A, B)
+
+        return self
+
+    def symmetric_estimate(self, A, B):
+        """
+        Convenience function for directed, reverse directed and mutual information estimation.
+        This function ensures symmetric results for I(A->B)_rev = I(B->A),
+        which is not the case for the original definition of reverse information
+        by Jiao et al.
+        :param A: time series A
+        :param B: time series B
+        :return: self
+        """
+        A, B = utils.ensure_dtraj_format(A, B)
+
+        self.Nx = np.unique(np.concatenate(A)).max() + 1
+        self.Ny = np.unique(np.concatenate(B)).max() + 1
+
+
+        if self.p_estimator.is_stationary_estimate:
+            d_forward, r_forward, m_forward = self.stationary_estimate(A, B)
+            # TODO: this overwrites the estimator instance. Can this be done better?
+            self.p_estimator.estimate(B, A)
+            d_backward, r_backward, m_backward = self.stationary_estimate(B, A)
+        else:
+            d_forward, r_forward, m_forward = self.nonstationary_estimate(A, B)
+            self.p_estimator.estimate(B, A)
+            d_backward, r_backward, m_backward = self.nonstationary_estimate(B, A)
+
+        self.d = (d_forward + r_backward)/2
+        self.r = (r_forward + d_backward)/2
+        self.m = (m_forward + m_backward)/2
 
         return self
 
@@ -416,24 +439,3 @@ class JiaoI3(Estimator):
             m += temp_mi.mean() / msmlag
 
         return d, r, m
-
-
-def dir_info(A, B, msmlag, reversible=True):
-    """
-    Convenience function for estimating the directed information between two
-    discrete trajectories with causality conserving common time.
-
-    This function ensures consistent results if expecting I(A->B)_rev = I(B->A),
-    which is not the case for the time-lagged definition of reverse definition
-    of Jiao et al.
-
-    :param A: List of trajectories 1
-    :param B: List of trajectories 2
-    :param msmlag: Markov model lag time
-    :param reversible: Markov estimator type
-    :return: directed information, backward directed information, mutual information
-    """
-    di_forward, rdi_forward, mi = compute_DI_MI_E4_imsm(A, B, msmlag, reversible=reversible)
-    di_backward, rdi_backward, _ = compute_DI_MI_E4_imsm(B, A, msmlag, reversible=reversible)
-
-    return di_forward + rdi_backward, rdi_forward + di_backward, mi

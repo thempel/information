@@ -132,3 +132,17 @@ class TestSimple(unittest.TestCase):
         self.assertGreaterEqual(estimator.m, 0)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
+
+    def test_symmetric_estimate(self):
+        A = np.random.randint(0, 2, size=1000)
+        B = np.random.randint(0, 2, size=1000)
+        prob_est_AB = information.MSMProbabilities().estimate(A, B)
+        prob_est_BA = information.MSMProbabilities().estimate(B, A)
+
+        estimator_AB = information.JiaoI4(prob_est_AB).symmetric_estimate(A, B)
+        estimator_BA = information.JiaoI4(prob_est_BA).symmetric_estimate(B, A)
+
+        self.assertAlmostEqual(estimator_AB.r, estimator_BA.d)
+        self.assertAlmostEqual(estimator_AB.d, estimator_BA.r)
+        self.assertAlmostEqual(estimator_AB.m, estimator_BA.m)
+
