@@ -4,13 +4,15 @@ import numpy as np
 import msmtools
 
 
-# true output
 def entropy1D(x):
     return - x * np.log2(x) - (1 - x) * np.log2(1 - x)
 
 
 class TestCrossover(unittest.TestCase):
-
+    """
+    Cross-over channel test. Directed information can be computed analytically.
+    Class sets up a simple binary channel with cross-overs, no delay.
+    """
     @classmethod
     def setUpClass(cls):
         p = 0.3
@@ -27,7 +29,10 @@ class TestCrossover(unittest.TestCase):
 
 
     def test_MSMInfo(self):
-
+        """
+        Test MSM probability and I4 estimator.
+        :return:
+        """
         prob = information.MSMProbabilities().estimate(self.X, self.Y)
         estimator = information.JiaoI4(prob)
         estimator.estimate(self.X, self.Y)
@@ -38,10 +43,48 @@ class TestCrossover(unittest.TestCase):
 
 
     def test_CTWInfo(self):
-
+        """
+        Test CTW probabilities and I4 estimator.
+        :return:
+        """
         prob = information.CTWProbabilities(5).estimate(self.X, self.Y)
         estimator = information.JiaoI4(prob)
         estimator.estimate(self.X, self.Y)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)
+
+    def test_MSMInfo_multi(self):
+        """
+        Tests if polluting one state of the second trajectory with random noise alters
+        the I4 result for MSM probabilities.
+        :return:
+        """
+        Y = self.Y.copy()
+        idx = Y == 1
+        Y[idx] = self.Y[idx] + np.random.randint(0, 2, size=self.Y[idx].shape[0])
+        prob = information.MSMProbabilities().estimate(self.X, Y)
+        estimator = information.JiaoI4(prob)
+        estimator.estimate(self.X, Y)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)
+
+    def test_CTWInfo_multi(self):
+        """
+        Tests if polluting one state of the second trajectory with random noise alters
+        the I4 result for CTW probabilities.
+        :return:
+        """
+
+        Y = self.Y.copy()
+        idx = Y == 1
+        Y[idx] = self.Y[idx] + np.random.randint(0, 2, size=self.Y[idx].shape[0])
+        prob = information.CTWProbabilities(5).estimate(self.X, Y)
+        estimator = information.JiaoI4(prob)
+        estimator.estimate(self.X, Y)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
         self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
