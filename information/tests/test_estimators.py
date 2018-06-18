@@ -139,8 +139,8 @@ class TestSimple(unittest.TestCase):
         prob_est_AB = information.MSMProbabilities().estimate(A, B)
         prob_est_BA = information.MSMProbabilities().estimate(B, A)
 
-        estimator_AB = information.JiaoI4(prob_est_AB).symmetric_estimate(A, B)
-        estimator_BA = information.JiaoI4(prob_est_BA).symmetric_estimate(B, A)
+        estimator_AB = information.JiaoI4(prob_est_AB).symmetrized_estimate(A, B)
+        estimator_BA = information.JiaoI4(prob_est_BA).symmetrized_estimate(B, A)
 
         self.assertAlmostEqual(estimator_AB.r, estimator_BA.d)
         self.assertAlmostEqual(estimator_AB.d, estimator_BA.r)

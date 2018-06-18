@@ -161,3 +161,9 @@ class TestCrossover(unittest.TestCase):
         self.assertAlmostEqual(estimator3.d, estimator4.d, places=1)
         self.assertAlmostEqual(estimator3.r, estimator4.r, places=1)
         self.assertAlmostEqual(estimator3.m, estimator4.m, places=1)
+
+    def test_symmetric_estimate(self):
+        prob_est = information.MSMProbabilities().estimate(self.X, self.Y)
+        estimator = information.JiaoI4(prob_est).symmetrized_estimate(self.X, self.Y)
+
+        self.assertGreater(estimator.d, estimator.r)

@@ -36,12 +36,12 @@ class Estimator(object):
 
         return self
 
-    def symmetric_estimate(self, A, B):
+    def symmetrized_estimate(self, A, B):
         """
-        Convenience function for directed, reverse directed and mutual information estimation.
-        This function ensures symmetric results for I(A->B)_rev = I(B->A),
-        which is not the case for the original definition of reverse information
-        by Jiao et al.
+        Ensures symmetric results for directed, reverse directed and mutual information
+        estimation, I(A->B)_rev = I(B->A). This is not the case for the original definition
+        of reverse information by Jiao et al. and the results are to be understood qualitatively
+        only.
         :param A: time series A
         :param B: time series B
         :return: self
