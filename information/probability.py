@@ -3,7 +3,16 @@ import pyemma
 
 
 class MSMProbabilities:
+    """
+    Wrapper class for PyEMMA to estimate conditional transition probabilities.
+    """
     def __init__(self, msmlag=1, reversible=True, tmat_ck_estimate=False):
+        """
+        Computes conditional transition probabilities from MSMs with PyEMMA.
+        :param msmlag: MSM lag time (int)
+        :param reversible: reversible estimate (bool)
+        :param tmat_ck_estimate: Estimate higher lag time transition matrices from CK-equation
+        """
         self.msmlag = msmlag
         self.reversible = reversible
         self.tmat_ck_estimate = tmat_ck_estimate
@@ -11,6 +20,12 @@ class MSMProbabilities:
         self.is_stationary_estimate = True
 
     def estimate(self, X, Y):
+        """
+        Estimates MSM probabilities from two time series separately and in combined.
+        :param X: time-series 1
+        :param Y: time-series 2
+        :return: self
+        """
         if not isinstance(X, list): X = [X]
         if not isinstance(Y, list): Y = [Y]
 
