@@ -146,3 +146,18 @@ class TestSimple(unittest.TestCase):
         self.assertAlmostEqual(estimator_AB.d, estimator_BA.r)
         self.assertAlmostEqual(estimator_AB.m, estimator_BA.m)
 
+    def test_MSMInfoRew(self):
+        prob_est = informant.MSMProbabilities(msmlag=1)
+        A = [np.random.randint(0, 2, 100) for _ in range(20)]
+        B = [np.random.randint(0, 2, 100) for _ in range(20)]
+        prob_est.estimate(A, B)
+
+        estimator = informant.JiaoI4(prob_est)
+
+        estimator.estimate(A, B, traj_eq_reweighting=True)
+
+        self.assertGreaterEqual(estimator.d, 0)
+        self.assertGreaterEqual(estimator.r, 0)
+        self.assertGreaterEqual(estimator.m, 0)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)

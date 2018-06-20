@@ -17,11 +17,13 @@ class Estimator(object):
         self.d, self.r, self.m = None, None, None
         self.Nx, self.Ny = 0, 0
 
-    def estimate(self, A, B):
+    def estimate(self, A, B, traj_eq_reweighting=False):
         """
         Convenience function for directed, reverse directed and mutual informant estimation.
         :param A: time series A
         :param B: time series B
+        :traj_eq_reweighting : reweight trajectories according to stationary distribution
+            only stationary estimates, experimental
         :return: self
         """
         A, B = utils.ensure_dtraj_format(A, B)
@@ -30,7 +32,13 @@ class Estimator(object):
         self.Ny = np.unique(np.concatenate(B)).max() + 1
 
         if self.p_estimator.is_stationary_estimate:
-            self.d, self.r, self.m = self.stationary_estimate(A, B)
+            if not traj_eq_reweighting:
+                self.d, self.r, self.m = self.stationary_estimate(A, B)
+            else:
+                from msmtools.analysis import stationary_distribution
+                pi_xy = stationary_distribution(self.p_estimator.tmat_xy)
+                A_re, B_re = utils.reweight_trajectories(A, B, pi_xy)
+                self.d, self.r, self.m = self.stationary_estimate(A_re, B_re)
         else:
             self.d, self.r, self.m = self.nonstationary_estimate(A, B)
 
