@@ -167,3 +167,68 @@ class TestCrossover(unittest.TestCase):
         estimator = informant.JiaoI4(prob_est).symmetrized_estimate(self.X, self.Y)
 
         self.assertGreater(estimator.d, estimator.r)
+
+    def test_MSMI4Multitraj(self):
+        """
+        Test MSM probability and I4 estimator for multiple trajs.
+        :return:
+        """
+        prob = informant.MSMProbabilities().estimate([self.X, self.X], [self.Y, self.Y])
+        estimator = informant.JiaoI4(prob)
+        estimator.estimate([self.X, self.X], [self.Y, self.Y])
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)
+
+    def test_CTWI4Multitraj(self):
+        """
+        Test MSM probability and I4 estimator for multiple trajs.
+        :return:
+        """
+        prob = informant.CTWProbabilities(5).estimate([self.X, self.X], [self.Y, self.Y])
+        estimator = informant.JiaoI4(prob)
+        estimator.estimate([self.X, self.X], [self.Y, self.Y])
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)
+
+    def test_MSMI4EnsembleMultitraj(self):
+        """
+        Test MSM probability and I4 estimator for multiple trajs.
+        :return:
+        """
+        prob = informant.MSMProbabilities().estimate([self.X, self.X], [self.Y, self.Y])
+        estimator = informant.JiaoI4Ensemble(prob)
+        estimator.estimate([self.X, self.X], [self.Y, self.Y])
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)
+
+    def test_CTWI3Multitraj(self):
+        """
+        Test MSM probability and I4 estimator for multiple trajs.
+        :return:
+        """
+        prob = informant.CTWProbabilities(5).estimate([self.X, self.X], [self.Y, self.Y])
+        estimator = informant.JiaoI3(prob)
+        estimator.estimate([self.X, self.X], [self.Y, self.Y])
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)
+
+    def test_MSMI3Multitraj(self):
+        """
+        Test MSM probability and I4 estimator for multiple trajs.
+        :return:
+        """
+        prob = informant.MSMProbabilities().estimate([self.X, self.X], [self.Y, self.Y])
+        estimator = informant.JiaoI3(prob)
+        estimator.estimate([self.X, self.X], [self.Y, self.Y])
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)

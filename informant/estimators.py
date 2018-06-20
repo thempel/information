@@ -245,7 +245,7 @@ class JiaoI4(Estimator):
             r += temp_rev_di.mean() / msmlag
             m += temp_mi.mean() / msmlag
 
-        return d, r, m
+        return d/len(x_lagged), r/len(x_lagged), m/len(x_lagged)
 
 
 class JiaoI4Ensemble(Estimator):
@@ -438,4 +438,4 @@ class JiaoI3(Estimator):
             r += temp_rev_di.mean() / msmlag
             m += temp_mi.mean() / msmlag
 
-        return d, r, m
+        return d/len(x_lagged), r/len(x_lagged), m/len(x_lagged)
