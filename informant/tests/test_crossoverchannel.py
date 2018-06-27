@@ -259,3 +259,26 @@ class TestCrossover(unittest.TestCase):
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
         self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
         self.assertLess(estimator.r, .1 * self.true_value_DI)
+
+    def test_delayed(self):
+        N = int(1e4)
+        shift = 10
+        p = 0.01
+        eps = .33
+        T = np.array([[1-p, p], [p, 1-p]])
+        X = msmtools.generation.generate_traj(T, N)
+        _errbits = np.random.rand(N) < eps
+        Y = X.copy()
+        Y[_errbits] = 1 - Y[_errbits]
+
+        X = X[shift:]
+        Y = Y[:-shift]
+
+        prob = informant.MSMProbabilities(shift, reversible=False).estimate(X, Y)
+        estimator = informant.JiaoI4(prob)
+        estimator.estimate(X, Y)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        # TODO: derive relationship to delaytime and add actual value.
+        self.assertAlmostEqual(estimator.d, 0.008, places=1)
+        self.assertLess(estimator.r, .1 * 0.008)
