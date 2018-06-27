@@ -9,7 +9,6 @@ class TestSimple(unittest.TestCase):
         prob_est = informant.MSMProbabilities(msmlag=1)
         A = np.random.randint(0, 2, 100)
         B = np.random.randint(0, 2, 100)
-        prob_est.estimate(A, B)
 
         estimator = informant.JiaoI4(prob_est)
 
@@ -25,7 +24,6 @@ class TestSimple(unittest.TestCase):
         prob_est = informant.MSMProbabilities(msmlag=1)
         A = np.random.randint(0, 3, 200)
         B = np.random.randint(0, 4, 200)
-        prob_est.estimate(A, B)
 
         estimator = informant.JiaoI4(prob_est)
 
@@ -41,7 +39,6 @@ class TestSimple(unittest.TestCase):
         prob_est = informant.MSMProbabilities(msmlag=1)
         A = np.random.randint(0, 3, 200)
         B = np.random.randint(0, 4, 200)
-        prob_est.estimate(A, B)
 
         estimator = informant.JiaoI4Ensemble(prob_est)
 
@@ -57,7 +54,6 @@ class TestSimple(unittest.TestCase):
         prob_est = informant.MSMProbabilities(msmlag=1)
         A = np.random.randint(0, 3, 200)
         B = np.random.randint(0, 4, 200)
-        prob_est.estimate(A, B)
 
         ensemble_estimator = informant.JiaoI4Ensemble(prob_est)
         ensemble_estimator.estimate(A, B)
@@ -74,7 +70,6 @@ class TestSimple(unittest.TestCase):
         prob_est = informant.CTWProbabilities(D=3)
         A = np.random.randint(0, 2, 100)
         B = np.random.randint(0, 2, 100)
-        prob_est.estimate(A, B)
 
         estimator = informant.JiaoI4(prob_est)
 
@@ -90,7 +85,6 @@ class TestSimple(unittest.TestCase):
         prob_est = informant.CTWProbabilities(D=3)
         A = np.ones(100, dtype=int)
         B = np.ones(100, dtype=int)
-        prob_est.estimate(A, B)
 
         estimator = informant.JiaoI4(prob_est)
 
@@ -106,7 +100,6 @@ class TestSimple(unittest.TestCase):
         prob_est = informant.CTWProbabilities(D=5)
         A = np.random.randint(0, 2, 1000)
         B = np.random.randint(0, 2, 1000)
-        prob_est.estimate(A, B)
 
         estimator = informant.JiaoI3(prob_est)
 
@@ -122,7 +115,6 @@ class TestSimple(unittest.TestCase):
         A = np.random.randint(0, 2, size=1000)
         B = np.random.randint(0, 2, size=1000)
         prob_est = informant.MSMProbabilities()
-        prob_est.estimate(A, B)
 
         estimator = informant.JiaoI3(prob_est)
         estimator.estimate(A, B)
@@ -136,8 +128,8 @@ class TestSimple(unittest.TestCase):
     def test_symmetric_estimate(self):
         A = np.random.randint(0, 2, size=1000)
         B = np.random.randint(0, 2, size=1000)
-        prob_est_AB = informant.MSMProbabilities().estimate(A, B)
-        prob_est_BA = informant.MSMProbabilities().estimate(B, A)
+        prob_est_AB = informant.MSMProbabilities()
+        prob_est_BA = informant.MSMProbabilities()
 
         estimator_AB = informant.JiaoI4(prob_est_AB).symmetrized_estimate(A, B)
         estimator_BA = informant.JiaoI4(prob_est_BA).symmetrized_estimate(B, A)
@@ -150,7 +142,6 @@ class TestSimple(unittest.TestCase):
         prob_est = informant.MSMProbabilities(msmlag=1)
         A = [np.random.randint(0, 2, 100) for _ in range(20)]
         B = [np.random.randint(0, 2, 100) for _ in range(20)]
-        prob_est.estimate(A, B)
 
         estimator = informant.JiaoI4(prob_est)
 

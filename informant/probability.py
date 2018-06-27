@@ -19,6 +19,8 @@ class MSMProbabilities:
 
         self.is_stationary_estimate = True
 
+        self._estimated = False
+
     def estimate(self, X, Y):
         """
         Estimates MSM probabilities from two time series separately and in combined.
@@ -56,6 +58,7 @@ class MSMProbabilities:
             print(self.tmat_x.shape, self.tmat_y.shape, self.tmat_xy.shape)
             raise NotImplementedError('Combined model is not showing all combinatorial states. Try non-reversible?')
 
+        self._estimated = True
         return self
 
 class CTWProbabilities:
@@ -67,6 +70,8 @@ class CTWProbabilities:
         self.D = D
         self.is_stationary_estimate = False
         self.pxy, self.px, self.py = [], [], []
+
+        self._estimated = False
 
     def estimate(self, X, Y):
         if not isinstance(X, list): X = [X]
@@ -88,7 +93,7 @@ class CTWProbabilities:
             self.pxy.append(self._ctwalgorithm(_x + Nx_subset * _y, Nx_subset * Ny_subset, self.D))
             self.px.append(self._ctwalgorithm(_x, Nx_subset, self.D))
             self.py.append(self._ctwalgorithm(_y, Ny_subset, self.D))
-
+        self._estimated = True
         return self
 
     def _ctwalgorithm(self, x, Nx, D):

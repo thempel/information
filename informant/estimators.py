@@ -31,6 +31,9 @@ class Estimator(object):
         self.Nx = np.unique(np.concatenate(A)).max() + 1
         self.Ny = np.unique(np.concatenate(B)).max() + 1
 
+        if not self.p_estimator._estimated:
+            self.p_estimator.estimate(A, B)
+
         if self.p_estimator.is_stationary_estimate:
             if not traj_eq_reweighting:
                 self.d, self.r, self.m = self.stationary_estimate(A, B)
@@ -54,21 +57,15 @@ class Estimator(object):
         :param B: time series B
         :return: self
         """
-        A, B = utils.ensure_dtraj_format(A, B)
+        self.estimate(A, B)
+        d_forward, r_forward, m_forward = self.d, self.r, self.m
 
-        self.Nx = np.unique(np.concatenate(A)).max() + 1
-        self.Ny = np.unique(np.concatenate(B)).max() + 1
-
-
-        if self.p_estimator.is_stationary_estimate:
-            d_forward, r_forward, m_forward = self.stationary_estimate(A, B)
-            # TODO: this overwrites the estimator instance. Can this be done better?
-            self.p_estimator.estimate(B, A)
-            d_backward, r_backward, m_backward = self.stationary_estimate(B, A)
-        else:
-            d_forward, r_forward, m_forward = self.nonstationary_estimate(A, B)
-            self.p_estimator.estimate(B, A)
-            d_backward, r_backward, m_backward = self.nonstationary_estimate(B, A)
+        # for backward direction, copy estimator
+        from copy import deepcopy
+        reverse_estimator = deepcopy(self)
+        reverse_estimator.p_estimator._estimated = False
+        reverse_estimator.estimate(B, A)
+        d_backward, r_backward, m_backward = reverse_estimator.d, reverse_estimator.r, reverse_estimator.m
 
         self.d = (d_forward + r_backward)/2
         self.r = (r_forward + d_backward)/2
