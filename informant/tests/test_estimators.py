@@ -138,6 +138,19 @@ class TestSimple(unittest.TestCase):
         self.assertAlmostEqual(estimator_AB.d, estimator_BA.r)
         self.assertAlmostEqual(estimator_AB.m, estimator_BA.m)
 
+    def test_symmetric_estimate_CTW(self):
+        A = np.random.randint(0, 2, size=1000)
+        B = np.random.randint(0, 3, size=1000)
+        prob_est_AB = informant.CTWProbabilities(3)
+        prob_est_BA = informant.CTWProbabilities(3)
+
+        estimator_AB = informant.JiaoI4(prob_est_AB).symmetrized_estimate(A, B)
+        estimator_BA = informant.JiaoI4(prob_est_BA).symmetrized_estimate(B, A)
+
+        self.assertAlmostEqual(estimator_AB.r, estimator_BA.d)
+        self.assertAlmostEqual(estimator_AB.d, estimator_BA.r)
+        self.assertAlmostEqual(estimator_AB.m, estimator_BA.m)
+
     def test_MSMInfoRew(self):
         prob_est = informant.MSMProbabilities(msmlag=1)
         A = [np.random.randint(0, 2, 100) for _ in range(20)]

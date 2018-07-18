@@ -60,10 +60,11 @@ class Estimator(object):
         self.estimate(A, B)
         d_forward, r_forward, m_forward = self.d, self.r, self.m
 
-        # for backward direction, copy estimator
-        from copy import deepcopy
-        reverse_estimator = deepcopy(self)
-        reverse_estimator.p_estimator._estimated = False
+        # for backward direction, initialize new probability / information estimators
+        # TODO: this is extremely ugly code and probably not very robust.
+        p_estimator_args = [self.p_estimator.__getattribute__(a) for a in self.p_estimator.__init__.__code__.co_varnames[1:]]
+        reverse_p_estimator = self.p_estimator.__class__(*p_estimator_args)
+        reverse_estimator = self.__class__(reverse_p_estimator)
         reverse_estimator.estimate(B, A)
         d_backward, r_backward, m_backward = reverse_estimator.d, reverse_estimator.r, reverse_estimator.m
 
