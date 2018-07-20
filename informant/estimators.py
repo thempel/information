@@ -47,7 +47,7 @@ class Estimator(object):
 
         return self
 
-    def symmetrized_estimate(self, A, B):
+    def symmetrized_estimate(self, A, B, traj_eq_reweighting=False):
         """
         Ensures symmetric results for directed, reverse directed and mutual informant
         estimation, I(A->B)_rev = I(B->A). This is not the case for the original definition
@@ -57,7 +57,7 @@ class Estimator(object):
         :param B: time series B
         :return: self
         """
-        self.estimate(A, B)
+        self.estimate(A, B, traj_eq_reweighting=traj_eq_reweighting)
         d_forward, r_forward, m_forward = self.d, self.r, self.m
 
         # for backward direction, initialize new probability / information estimators
@@ -65,7 +65,7 @@ class Estimator(object):
         p_estimator_args = [self.p_estimator.__getattribute__(a) for a in self.p_estimator.__init__.__code__.co_varnames[1:]]
         reverse_p_estimator = self.p_estimator.__class__(*p_estimator_args)
         reverse_estimator = self.__class__(reverse_p_estimator)
-        reverse_estimator.estimate(B, A)
+        reverse_estimator.estimate(B, A, traj_eq_reweighting=traj_eq_reweighting)
         d_backward, r_backward, m_backward = reverse_estimator.d, reverse_estimator.r, reverse_estimator.m
 
         self.d = (d_forward + r_backward)/2
