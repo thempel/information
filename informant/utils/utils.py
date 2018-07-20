@@ -48,12 +48,12 @@ def reweight_trajectories(A, B, p, size=None):
     starting_points = np.empty((Nx, Ny), dtype=object)
 
     for a, b in product(range(Nx), range(Ny)):
-        starting_points[a, b] = np.argwhere([np.all([_a[0], _b[0]] == [a, b]) for _a, _b in zip(A, B)]).squeeze()
-
-    for starting_point_list in starting_points.flat:
-        if starting_point_list is None:
+        p = np.where([np.all([_a[0], _b[0]] == [a, b]) for _a, _b in zip(A, B)])[0]
+        if p.shape[0] < 1:
             raise RuntimeError('Cannot reweight to equilibrium because not all combinatorial states '
                                'are starting states.')
+        else:
+            starting_points[a, b] = p
 
     A_reweighted, B_reweighted = [], []
     for lsample in sample_local_states:
