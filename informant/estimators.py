@@ -14,6 +14,8 @@ class Estimator(object):
         :param probability_estimator: informant.ProbabilityEstimator class
         """
         self.p_estimator = probability_estimator
+        self.reverse_estimator = None
+
         self.d, self.r, self.m = None, None, None
         self.Nx, self.Ny = 0, 0
 
@@ -64,9 +66,9 @@ class Estimator(object):
         # TODO: this is extremely ugly code and probably not very robust.
         p_estimator_args = [self.p_estimator.__getattribute__(a) for a in self.p_estimator.__init__.__code__.co_varnames[1:]]
         reverse_p_estimator = self.p_estimator.__class__(*p_estimator_args)
-        reverse_estimator = self.__class__(reverse_p_estimator)
-        reverse_estimator.estimate(B, A, traj_eq_reweighting=traj_eq_reweighting)
-        d_backward, r_backward, m_backward = reverse_estimator.d, reverse_estimator.r, reverse_estimator.m
+        self.reverse_estimator = self.__class__(reverse_p_estimator)
+        self.reverse_estimator.estimate(B, A, traj_eq_reweighting=traj_eq_reweighting)
+        d_backward, r_backward, m_backward = self.reverse_estimator.d, self.reverse_estimator.r, self.reverse_estimator.m
 
         self.d = (d_forward + r_backward)/2
         self.r = (r_forward + d_backward)/2
