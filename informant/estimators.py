@@ -66,6 +66,15 @@ class Estimator(object):
         # TODO: this is extremely ugly code and probably not very robust.
         p_estimator_args = [self.p_estimator.__getattribute__(a) for a in self.p_estimator.__init__.__code__.co_varnames[1:]]
         reverse_p_estimator = self.p_estimator.__class__(*p_estimator_args)
+
+        if self.p_estimator.is_stationary_estimate:
+            if self.p_estimator._user_tmat_x:
+                reverse_p_estimator.set_transition_matrices(tmat_y=self.p_estimator.tmat_x)
+            if self.p_estimator._user_tmat_y:
+                reverse_p_estimator.set_transition_matrices(tmat_x=self.p_estimator.tmat_y)
+            if self.p_estimator._user_tmat_xy:
+                raise NotImplementedError('Transforming XY-transition matrix into YX-formulation not implemented.')
+
         self.reverse_estimator = self.__class__(reverse_p_estimator)
         self.reverse_estimator.estimate(B, A, traj_eq_reweighting=traj_eq_reweighting)
         d_backward, r_backward, m_backward = self.reverse_estimator.d, self.reverse_estimator.r, self.reverse_estimator.m
@@ -261,6 +270,8 @@ class JiaoI4Ensemble(Estimator):
     def __init__(self, probability_estimator):
         super(JiaoI4Ensemble, self).__init__(probability_estimator)
 
+        self.combinatorial_state_counts = None
+
     def _nonstationary_estimator(self, a, b):
         raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
 
@@ -269,6 +280,7 @@ class JiaoI4Ensemble(Estimator):
         tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
+        self.combinatorial_state_counts = np.zeros((self.Nx, self.Ny))
 
         statecounts = np.bincount(np.concatenate([_x + self.Nx * _y for _x, _y in zip(x_lagged, y_lagged)]))
 
@@ -294,6 +306,9 @@ class JiaoI4Ensemble(Estimator):
                 prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] / tmat_x_at_xi_bloated[idx]))
             mi += counts_xi_yi * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
                 tmat_xy[xi + self.Nx * yi][idx] / (tmat_y_at_yi_bloated * tmat_x_at_xi_bloated)[idx]))
+
+            self.combinatorial_state_counts[xi, yi] = counts_xi_yi
+
         di = di / statecounts.sum()
         mi = mi / statecounts.sum()
         rdi = rdi / statecounts.sum()

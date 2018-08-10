@@ -19,6 +19,9 @@ class MSMProbabilities:
 
         self.is_stationary_estimate = True
 
+        self.tmat_x, self.tmat_y, self.tmat_xy = None, None, None
+        self._user_tmat_x, self._user_tmat_y, self._user_tmat_xy = False, False, False
+
         self._estimated = False
 
     def estimate(self, X, Y):
@@ -35,22 +38,26 @@ class MSMProbabilities:
         Ny = np.unique(np.concatenate(Y)).max() + 1
 
         if not self.tmat_ck_estimate:
-            self.tmat_x = pyemma.msm.estimate_markov_model(X, self.msmlag, reversible=self.reversible).transition_matrix
-            self.tmat_y = pyemma.msm.estimate_markov_model(Y, self.msmlag, reversible=self.reversible).transition_matrix
-            self.tmat_xy = pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
+            if not self._user_tmat_x:
+                self.tmat_x = pyemma.msm.estimate_markov_model(X, self.msmlag, reversible=self.reversible).transition_matrix
+            if not self._user_tmat_y:
+                self.tmat_y = pyemma.msm.estimate_markov_model(Y, self.msmlag, reversible=self.reversible).transition_matrix
+            if not self._user_tmat_xy:
+                self.tmat_xy = pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
                                                             self.msmlag, reversible=self.reversible).transition_matrix
         else:
-            self.tmat_x = np.linalg.matrix_power(
-                pyemma.msm.estimate_markov_model(X, 1, reversible=self.reversible).transition_matrix, self.msmlag)
-
-            self.tmat_y = np.linalg.matrix_power(
-                pyemma.msm.estimate_markov_model(Y, 1, reversible=self.reversible).transition_matrix, self.msmlag)
-
-            self.tmat_xy = np.linalg.matrix_power(
-                pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
-                                                 1,
-                                                 reversible=self.reversible).transition_matrix,
-                self.msmlag)
+            if not self._user_tmat_x:
+                self.tmat_x = np.linalg.matrix_power(
+                    pyemma.msm.estimate_markov_model(X, 1, reversible=self.reversible).transition_matrix, self.msmlag)
+            if not self._user_tmat_y:
+                self.tmat_y = np.linalg.matrix_power(
+                    pyemma.msm.estimate_markov_model(Y, 1, reversible=self.reversible).transition_matrix, self.msmlag)
+            if not self._user_tmat_xy:
+                self.tmat_xy = np.linalg.matrix_power(
+                    pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
+                                                     1,
+                                                     reversible=self.reversible).transition_matrix,
+                    self.msmlag)
 
         if not self.tmat_x.shape[0] * self.tmat_y.shape[0] == self.tmat_xy.shape[0]:
             print(self.tmat_x.shape, self.tmat_y.shape, self.tmat_xy.shape)
@@ -58,6 +65,28 @@ class MSMProbabilities:
 
         self._estimated = True
         return self
+
+    def set_transition_matrices(self, tmat_x=None, tmat_y=None, tmat_xy=None):
+        if self.tmat_ck_estimate and self.msmlag != 1:
+            print('WARNING: User-defined matrices will be matrix powered (tmat_ck_estimate=True).')
+
+        if tmat_x is not None:
+            self.tmat_x = np.linalg.matrix_power(tmat_x, self.msmlag if self.tmat_ck_estimate else 1)
+            self._user_tmat_x = True
+        if tmat_y is not None:
+            self.tmat_y = np.linalg.matrix_power(tmat_y, self.msmlag if self.tmat_ck_estimate else 1)
+            self._user_tmat_y = True
+        if tmat_xy is not None:
+            self.tmat_xy = np.linalg.matrix_power(tmat_xy, self.msmlag if self.tmat_ck_estimate else 1)
+            self._user_tmat_xy = True
+
+        if (tmat_x is not None) and (tmat_y is not None) and (tmat_xy is not None):
+            if not self.tmat_x.shape[0] * self.tmat_y.shape[0] == self.tmat_xy.shape[0]:
+                raise NotImplementedError('Combined model is not showing all combinatorial states.')
+            self._estimated = True
+
+        return self
+
 
 class CTWProbabilities:
     def __init__(self, D):
@@ -173,7 +202,7 @@ class CTWProbabilities:
         Nx = eta.shape[0] + 1
 
         pw = np.hstack([eta, [1]])
-        pw /= pw.sum();  # % pw(1) pw(2) .. pw(M+1)
+        pw /= pw.sum()  # % pw(1) pw(2) .. pw(M+1)
 
         pe = (countTree[:, index] + 0.5) / (countTree[:, index].sum() + Nx / 2)
 
