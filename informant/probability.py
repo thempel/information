@@ -67,6 +67,18 @@ class MSMProbabilities:
         return self
 
     def set_transition_matrices(self, tmat_x=None, tmat_y=None, tmat_xy=None):
+        """
+        Fix transition matrices to user defined ones. Overwrites existing
+        transition matrices. The ones that were not set here will be estimated with self.estimate.
+        :param tmat_x: transition matrix for time series X
+        :param tmat_y: transition matrix for time series Y
+        :param tmat_xy: transition matrix for combinatorial time series
+        :return: self
+        """
+
+        if (tmat_x is None) and (tmat_y is None) and (tmat_xy is None):
+            return self
+
         if self.tmat_ck_estimate and self.msmlag != 1:
             print('WARNING: User-defined matrices will be matrix powered (tmat_ck_estimate=True).')
 
