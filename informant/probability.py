@@ -36,27 +36,25 @@ class MSMProbabilities:
 
         if not self.tmat_ck_estimate:
             self.tmat_x = pyemma.msm.estimate_markov_model(X, self.msmlag, reversible=self.reversible).transition_matrix
+            self.tmat_y = pyemma.msm.estimate_markov_model(Y, self.msmlag, reversible=self.reversible).transition_matrix
+            self.tmat_xy = pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
+                                                            self.msmlag, reversible=self.reversible).transition_matrix
         else:
             self.tmat_x = np.linalg.matrix_power(
                 pyemma.msm.estimate_markov_model(X, 1, reversible=self.reversible).transition_matrix, self.msmlag)
 
-        if not self.tmat_ck_estimate:
-            self.tmat_y = pyemma.msm.estimate_markov_model(Y, self.msmlag, reversible=self.reversible).transition_matrix
-        else:
             self.tmat_y = np.linalg.matrix_power(
                 pyemma.msm.estimate_markov_model(Y, 1, reversible=self.reversible).transition_matrix, self.msmlag)
 
-        if not self.tmat_ck_estimate:
-            self.tmat_xy = pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
-                                                       self.msmlag, reversible=self.reversible).transition_matrix
-        else:
-            self.tmat_xy = np.linalg.matrix_power(pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
-                                                                              1,
-                                                                              reversible=self.reversible).transition_matrix,
-                                             self.msmlag)
+            self.tmat_xy = np.linalg.matrix_power(
+                pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
+                                                 1,
+                                                 reversible=self.reversible).transition_matrix,
+                self.msmlag)
+
         if not self.tmat_x.shape[0] * self.tmat_y.shape[0] == self.tmat_xy.shape[0]:
             print(self.tmat_x.shape, self.tmat_y.shape, self.tmat_xy.shape)
-            raise NotImplementedError('Combined model is not showing all combinatorial states. Try non-reversible?')
+            raise NotImplementedError('Combined model is not showing all combinatorial states.')
 
         self._estimated = True
         return self
