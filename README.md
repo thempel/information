@@ -12,7 +12,6 @@ estimators for directed information, the API works like follows:
 # A, B are two discrete, finite-alphabet time series of the same length.
 # first, compute the probabilities
 p_estimator = SomeProbabilityEstimator(**kwargs)
-p_estimator.estimate(A, B)
 
 # second, estimate directed, reverse directed and mutual information
 i_estimator = SomeInformationEstimator(p_estimator)
