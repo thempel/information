@@ -52,8 +52,8 @@ class TestSimple(unittest.TestCase):
 
     def test_compare_ensemble_timeav(self):
         prob_est = informant.MSMProbabilities(msmlag=1)
-        A = np.random.randint(0, 3, 200)
-        B = np.random.randint(0, 4, 200)
+        A = np.random.randint(0, 3, 1000)
+        B = np.random.randint(0, 4, 1000)
 
         ensemble_estimator = informant.JiaoI4Ensemble(prob_est)
         ensemble_estimator.estimate(A, B)
@@ -61,9 +61,9 @@ class TestSimple(unittest.TestCase):
         estimator = informant.JiaoI4(prob_est)
         estimator.estimate(A, B)
 
-        self.assertAlmostEqual(estimator.d, ensemble_estimator.d)
-        self.assertAlmostEqual(estimator.r, ensemble_estimator.r)
-        self.assertAlmostEqual(estimator.m, ensemble_estimator.m)
+        self.assertAlmostEqual(estimator.d, ensemble_estimator.d, places=4)
+        self.assertAlmostEqual(estimator.r, ensemble_estimator.r, places=4)
+        self.assertAlmostEqual(estimator.m, ensemble_estimator.m, places=4)
 
 
     def test_CTWInfo(self):

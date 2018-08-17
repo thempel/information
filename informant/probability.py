@@ -1,5 +1,6 @@
 import numpy as np
 import pyemma
+import msmtools
 from informant import utils
 
 class MSMProbabilities:
@@ -20,6 +21,8 @@ class MSMProbabilities:
         self.is_stationary_estimate = True
 
         self.tmat_x, self.tmat_y, self.tmat_xy = None, None, None
+        self._pi_x, self._pi_y, self._pi_xy = None, None, None
+
         self._user_tmat_x, self._user_tmat_y, self._user_tmat_xy = False, False, False
 
         self._estimated = False
@@ -98,6 +101,36 @@ class MSMProbabilities:
             self._estimated = True
 
         return self
+
+    @property
+    def pi_x(self):
+        if not self._estimated:
+            raise RuntimeError('Have to estimate before stationary distribution can be computed.')
+
+        if self._pi_x is None:
+            self._pi_x = msmtools.analysis.stationary_distribution(self.tmat_x)
+
+        return self._pi_x
+
+    @property
+    def pi_y(self):
+        if not self._estimated:
+            raise RuntimeError('Have to estimate before stationary distribution can be computed.')
+
+        if self._pi_y is None:
+            self._pi_y = msmtools.analysis.stationary_distribution(self.tmat_y)
+
+        return self._pi_y
+
+    @property
+    def pi_xy(self):
+        if not self._estimated:
+            raise RuntimeError('Have to estimate before stationary distribution can be computed.')
+
+        if self._pi_xy is None:
+            self._pi_xy = msmtools.analysis.stationary_distribution(self.tmat_xy)
+
+        return self._pi_xy
 
 
 class CTWProbabilities:

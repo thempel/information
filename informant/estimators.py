@@ -280,6 +280,9 @@ class JiaoI4Ensemble(Estimator):
         tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
+
+        pi_xy = self.p_estimator.pi_xy
+
         self.combinatorial_state_counts = np.zeros((self.Nx, self.Ny))
 
         statecounts = np.bincount(np.concatenate([_x + self.Nx * _y for _x, _y in zip(x_lagged, y_lagged)]))
@@ -299,19 +302,15 @@ class JiaoI4Ensemble(Estimator):
             idx = np.logical_and(tmat_xy[xi + self.Nx * yi] > 0,
                                  tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated > 0)
 
-            di += counts_xi_yi * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
+            di += pi_xy[xi + self.Nx * yi] * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
                 tmat_xy[xi + self.Nx * yi][idx] / (tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated)[idx]))
 
-            rdi += counts_xi_yi * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
+            rdi += pi_xy[xi + self.Nx * yi] * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
                 prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] / tmat_x_at_xi_bloated[idx]))
-            mi += counts_xi_yi * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
+            mi += pi_xy[xi + self.Nx * yi] * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
                 tmat_xy[xi + self.Nx * yi][idx] / (tmat_y_at_yi_bloated * tmat_x_at_xi_bloated)[idx]))
 
             self.combinatorial_state_counts[xi, yi] = counts_xi_yi
-
-        di = di / statecounts.sum()
-        mi = mi / statecounts.sum()
-        rdi = rdi / statecounts.sum()
 
         return di, rdi, mi
 
