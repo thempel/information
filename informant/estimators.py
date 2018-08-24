@@ -283,28 +283,40 @@ class JiaoI4Ensemble(Estimator):
 
         pi_xy = self.p_estimator.pi_xy
 
+        pi_dep = np.zeros((self.Nx  * self.Ny))
+        pi_dep[self.p_estimator.active_set_xy] = pi_xy
+
+        full2active = -1 * np.ones(self.Nx * self.Ny, dtype=int)
+        full2active[self.p_estimator.active_set_xy] = np.arange(len(self.p_estimator.active_set_xy))
+
         prob_xi_to_xip1_given_yi = np.zeros((self.Nx, self.Nx, self.Ny))
         for xi, xip1, yi in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny)]):
-            prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + self.Nx * yi, xip1 + self.Nx * _y] for _y in range(self.Ny)])
+            if xi + self.Nx * yi in self.p_estimator.active_set_xy:
+                for _y in range(self.Ny):
+                    if xip1 + self.Nx * _y in self.p_estimator.active_set_xy:
+                        prob_xi_to_xip1_given_yi[xi, xip1, yi] += tmat_xy[full2active[xi + self.Nx * yi],
+                                                                          full2active[xip1 + self.Nx * _y]]
+
 
         di, rdi, mi = 0., 0., 0.
         for xi, yi in itertools.product(range(self.Nx), range(self.Ny)):
+            if xi + self.Nx * yi in self.p_estimator.active_set_xy:
+                tmat_y_at_yi_bloated = np.repeat(tmat_y[yi], self.Nx)
+                tmat_x_at_xi_bloated = np.tile(tmat_x[xi], self.Ny)
+                prob_xi_xip1_given_yi_at_xi_yi_bloated = np.tile(prob_xi_to_xip1_given_yi[xi, :, yi], self.Ny)
+                tmat_xy_fullset = np.zeros((self.Nx * self.Ny))
+                tmat_xy_fullset[self.p_estimator.active_set_xy] = tmat_xy[full2active[xi + self.Nx * yi]]
 
-            tmat_y_at_yi_bloated = np.repeat(tmat_y[yi], self.Nx)
-            tmat_x_at_xi_bloated = np.tile(tmat_x[xi], self.Ny)
-            prob_xi_xip1_given_yi_at_xi_yi_bloated = np.tile(prob_xi_to_xip1_given_yi[xi, :, yi], self.Ny)
+                idx = np.logical_and(tmat_xy_fullset > 0,
+                                     tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated > 0)
 
+                di += pi_dep[xi + self.Nx * yi] * np.sum(tmat_xy_fullset[idx] * np.log2(
+                    tmat_xy_fullset[idx] / (tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated)[idx]))
 
-            idx = np.logical_and(tmat_xy[xi + self.Nx * yi] > 0,
-                                 tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated > 0)
-
-            di += pi_xy[xi + self.Nx * yi] * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
-                tmat_xy[xi + self.Nx * yi][idx] / (tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated)[idx]))
-
-            rdi += pi_xy[xi + self.Nx * yi] * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
-                prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] / tmat_x_at_xi_bloated[idx]))
-            mi += pi_xy[xi + self.Nx * yi] * np.sum(tmat_xy[xi + self.Nx * yi][idx] * np.log2(
-                tmat_xy[xi + self.Nx * yi][idx] / (tmat_y_at_yi_bloated * tmat_x_at_xi_bloated)[idx]))
+                rdi += pi_dep[xi + self.Nx * yi] * np.sum(tmat_xy_fullset[idx] * np.log2(
+                    prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] / tmat_x_at_xi_bloated[idx]))
+                mi += pi_dep[xi + self.Nx * yi] * np.sum(tmat_xy_fullset[idx] * np.log2(
+                    tmat_xy_fullset[idx] / (tmat_y_at_yi_bloated * tmat_x_at_xi_bloated)[idx]))
 
         return di, rdi, mi
 
