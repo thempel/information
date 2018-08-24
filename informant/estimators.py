@@ -74,6 +74,8 @@ class Estimator(object):
                 reverse_p_estimator.set_transition_matrices(tmat_x=self.p_estimator.tmat_y)
             if self.p_estimator._user_tmat_xy:
                 raise NotImplementedError('Transforming XY-transition matrix into YX-formulation not implemented.')
+            if self.p_estimator._dangerous_ignore_warnings_flag:
+                reverse_p_estimator._dangerous_ignore_warnings_flag = True
 
         self.reverse_estimator = self.__class__(reverse_p_estimator)
         self.reverse_estimator.estimate(B, A, traj_eq_reweighting=traj_eq_reweighting)
@@ -461,3 +463,82 @@ class JiaoI3(Estimator):
             m += temp_mi.mean() / msmlag
 
         return d/len(x_lagged), r/len(x_lagged), m/len(x_lagged)
+
+
+class TransferEntropy(Estimator):
+    r"""Estimator for Schreiber, PRL, 2000"""
+    def __init__(self, probability_estimator):
+        """
+        Implementation transfer entropy estimator by Schreiber, PRL, 2000
+
+        """
+        super(TransferEntropy, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, a, b):
+        raise NotImplementedError("Transfer entropy only implemented with MSM probabilities.")
+
+    def _stationary_estimator(self, x_lagged, y_lagged):
+        tmat_x = self.p_estimator.tmat_x
+        tmat_y = self.p_estimator.tmat_y
+        tmat_xy = self.p_estimator.tmat_xy
+
+        pi_xy = self.p_estimator.pi_xy
+
+        pi_dep = np.zeros((self.Nx  * self.Ny))
+        pi_dep[self.p_estimator.active_set_xy] = pi_xy
+
+        full2active = -1 * np.ones(self.Nx * self.Ny, dtype=int)
+        full2active[self.p_estimator.active_set_xy] = np.arange(len(self.p_estimator.active_set_xy))
+
+        if not tmat_x.shape[0] * tmat_y.shape[0] == tmat_xy.shape[0]:
+            print(tmat_x.shape[0], tmat_y.shape[0], tmat_xy.shape[0])
+            # return 0
+
+        prob_xi_to_xip1_given_yi = np.zeros((self.Nx, self.Nx, self.Ny))
+        for xi, xip1, yi in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny)]):
+            if xi + self.Nx * yi in self.p_estimator.active_set_xy:
+                for _y in range(self.Ny):
+                    if xip1 + self.Nx * _y in self.p_estimator.active_set_xy:
+                        prob_xi_to_xip1_given_yi[xi, xip1, yi] += tmat_xy[full2active[xi + self.Nx * yi],
+                                                                          full2active[xip1 + self.Nx * _y]]
+
+        d = 0.
+        for n1 in range(self.Nx):
+            for n2 in range(self.Ny):
+                tmat_x_at_xi_bloated = np.tile(tmat_x[n1], self.Ny)
+                prob_xi_xip1_given_yi_at_xi_yi_bloated = np.tile(prob_xi_to_xip1_given_yi[n1, :, n2], self.Ny)
+
+                idx = prob_xi_xip1_given_yi_at_xi_yi_bloated > 0
+
+                d += pi_dep[n1 + self.Nx * n2] * (prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] *
+                                                  np.log2(prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] /
+                                                  tmat_x_at_xi_bloated[idx])).sum()
+
+        return d, 0., 0.
+
+
+class MutualInfoStationaryDistribution(Estimator):
+    r"""Estimator for Schreiber, PRL, 2000"""
+    def __init__(self, probability_estimator):
+        """
+        Implementation mutual information (as described by Schreiber, PRL, 2000)
+
+        """
+        super(MutualInfoStationaryDistribution, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, a, b):
+        raise NotImplementedError("Doesn't make sense...")
+
+    def _stationary_estimator(self, x_lagged, y_lagged):
+
+
+        pi_dep = np.zeros((self.Nx * self.Ny))
+        pi_dep[self.p_estimator.active_set_xy] = self.p_estimator.pi_xy
+
+        m = 0.
+        for n1, p1 in enumerate(self.p_estimator.pi_x):
+            for n2, p2 in enumerate(self.p_estimator.pi_y):
+                if pi_dep[n1 + self.Nx*n2] > 0:
+                    m += pi_dep[n1 + self.Nx*n2] * np.log2(pi_dep[n1 + self.Nx*n2] / (p1 * p2))
+
+        return 0., 0., m
