@@ -15,9 +15,9 @@ class TestProbabilitySimple(unittest.TestCase):
         self.assertTrue(msmtools.analysis.is_transition_matrix(prob_est.tmat_y))
         self.assertTrue(msmtools.analysis.is_transition_matrix(prob_est.tmat_xy))
 
-        self.assertEqual(prob_est.pi_xy.sum(), 1)
-        self.assertEqual(prob_est.pi_x.sum(), 1)
-        self.assertEqual(prob_est.pi_y.sum(), 1)
+        self.assertAlmostEqual(prob_est.pi_xy.sum(), 1)
+        self.assertAlmostEqual(prob_est.pi_x.sum(), 1)
+        self.assertAlmostEqual(prob_est.pi_y.sum(), 1)
 
     def test_CTWProb(self):
         prob_est = informant.CTWProbabilities(D=3)

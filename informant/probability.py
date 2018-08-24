@@ -21,13 +21,16 @@ class MSMProbabilities:
         self.is_stationary_estimate = True
 
         self.tmat_x, self.tmat_y, self.tmat_xy = None, None, None
+        self.active_set_xy = None
         self._pi_x, self._pi_y, self._pi_xy = None, None, None
 
         self._user_tmat_x, self._user_tmat_y, self._user_tmat_xy = False, False, False
 
         self._estimated = False
 
-    def estimate(self, X, Y):
+        self._dangerous_ignore_warnings_flag = False
+
+    def estimate(self, X, Y, **kwargs):
         """
         Estimates MSM probabilities from two time series separately and in combined.
         :param X: time-series 1
@@ -42,29 +45,38 @@ class MSMProbabilities:
 
         if not self.tmat_ck_estimate:
             if not self._user_tmat_x:
-                self.tmat_x = pyemma.msm.estimate_markov_model(X, self.msmlag, reversible=self.reversible).transition_matrix
+                self.tmat_x = pyemma.msm.estimate_markov_model(X, self.msmlag, reversible=self.reversible,
+                                                               **kwargs).transition_matrix
             if not self._user_tmat_y:
-                self.tmat_y = pyemma.msm.estimate_markov_model(Y, self.msmlag, reversible=self.reversible).transition_matrix
+                self.tmat_y = pyemma.msm.estimate_markov_model(Y, self.msmlag, reversible=self.reversible,
+                                                               **kwargs).transition_matrix
             if not self._user_tmat_xy:
-                self.tmat_xy = pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
-                                                            self.msmlag, reversible=self.reversible).transition_matrix
+                m = pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
+                                                     self.msmlag, reversible=self.reversible,
+                                                     **kwargs)
+                self.tmat_xy = m.transition_matrix
+                self.active_set_xy = m.active_set
         else:
             if not self._user_tmat_x:
                 self.tmat_x = np.linalg.matrix_power(
-                    pyemma.msm.estimate_markov_model(X, 1, reversible=self.reversible).transition_matrix, self.msmlag)
+                    pyemma.msm.estimate_markov_model(X, 1, reversible=self.reversible,
+                                                     **kwargs).transition_matrix, self.msmlag)
             if not self._user_tmat_y:
                 self.tmat_y = np.linalg.matrix_power(
-                    pyemma.msm.estimate_markov_model(Y, 1, reversible=self.reversible).transition_matrix, self.msmlag)
+                    pyemma.msm.estimate_markov_model(Y, 1, reversible=self.reversible,
+                                                     **kwargs).transition_matrix, self.msmlag)
             if not self._user_tmat_xy:
-                self.tmat_xy = np.linalg.matrix_power(
-                    pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
+                m = pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
                                                      1,
-                                                     reversible=self.reversible).transition_matrix,
-                    self.msmlag)
+                                                     reversible=self.reversible,
+                                                     **kwargs)
+                self.tmat_xy = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
+                self.active_set_xy = m.active_set
 
         if not self.tmat_x.shape[0] * self.tmat_y.shape[0] == self.tmat_xy.shape[0]:
             print(self.tmat_x.shape, self.tmat_y.shape, self.tmat_xy.shape)
-            raise NotImplementedError('Combined model is not showing all combinatorial states.')
+            if not self._dangerous_ignore_warnings_flag:
+                raise NotImplementedError('Combined model is not showing all combinatorial states.')
 
         self._estimated = True
         return self
@@ -97,7 +109,8 @@ class MSMProbabilities:
 
         if (tmat_x is not None) and (tmat_y is not None) and (tmat_xy is not None):
             if not self.tmat_x.shape[0] * self.tmat_y.shape[0] == self.tmat_xy.shape[0]:
-                raise NotImplementedError('Combined model is not showing all combinatorial states.')
+                raise NotImplementedError('Combined model is not showing all combinatorial states. Auto-'
+                                          'computation will save connected set.')
             self._estimated = True
 
         return self
