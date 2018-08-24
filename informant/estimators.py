@@ -494,26 +494,16 @@ class TransferEntropy(Estimator):
             print(tmat_x.shape[0], tmat_y.shape[0], tmat_xy.shape[0])
             # return 0
 
-        prob_xi_to_xip1_given_yi = np.zeros((self.Nx, self.Nx, self.Ny))
-        for xi, xip1, yi in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny)]):
-            if xi + self.Nx * yi in self.p_estimator.active_set_xy:
-                for _y in range(self.Ny):
-                    if xip1 + self.Nx * _y in self.p_estimator.active_set_xy:
-                        prob_xi_to_xip1_given_yi[xi, xip1, yi] += tmat_xy[full2active[xi + self.Nx * yi],
-                                                                          full2active[xip1 + self.Nx * _y]]
-
         d = 0.
-        for n1 in range(self.Nx):
-            for n2 in range(self.Ny):
-                tmat_x_at_xi_bloated = np.tile(tmat_x[n1], self.Ny)
-                prob_xi_xip1_given_yi_at_xi_yi_bloated = np.tile(prob_xi_to_xip1_given_yi[n1, :, n2], self.Ny)
+        for i_n in range(self.Nx):
+            for j_n in range(self.Ny):
+                for i_np1 in range(self.Nx):
+                    if i_n + self.Nx * j_n in self.p_estimator.active_set_xy:
+                        p_inp1_given_in_jn = np.array([tmat_xy[i_n + self.Nx*j_n, i_np1 +
+                                                               self.Nx * jnp1] for jnp1 in range(self.Ny)]).sum()
 
-                idx = prob_xi_xip1_given_yi_at_xi_yi_bloated > 0
-
-                d += pi_dep[n1 + self.Nx * n2] * (prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] *
-                                                  np.log2(prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] /
-                                                  tmat_x_at_xi_bloated[idx])).sum()
-
+                        d += pi_dep[i_n + self.Nx  * j_n] * p_inp1_given_in_jn * np.log2(p_inp1_given_in_jn /
+                                                                                         tmat_x[i_n, i_np1])
         return d, 0., 0.
 
 
