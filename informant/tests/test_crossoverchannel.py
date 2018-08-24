@@ -282,3 +282,16 @@ class TestCrossover(unittest.TestCase):
         # TODO: derive relationship to delaytime and add actual value.
         self.assertAlmostEqual(estimator.d, 0.008, places=1)
         self.assertLess(estimator.r, .1 * 0.008)
+
+    def test_symmetric_TE(self):
+        prob_est = informant.MSMProbabilities()
+        estimator = informant.TransferEntropy(prob_est).symmetrized_estimate(self.X, self.Y)
+
+        self.assertGreater(estimator.d, estimator.r)
+
+    def test_schreiber_MI(self):
+        prob_est = informant.MSMProbabilities()
+        estimator = informant.MutualInfoStationaryDistribution(prob_est).estimate(self.X, self.Y)
+
+        # TODO: compute actual MI value for binary delayed channel.
+        self.assertGreaterEqual(estimator.m, self.true_value_DI)

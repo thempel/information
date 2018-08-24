@@ -165,3 +165,15 @@ class TestSimple(unittest.TestCase):
         self.assertGreaterEqual(estimator.m, 0)
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+
+    def test_MSM_TE(self):
+        A = np.random.randint(0, 2, size=1000)
+        B = np.random.randint(0, 2, size=1000)
+        prob_est = informant.MSMProbabilities()
+
+        estimator = informant.TransferEntropy(prob_est)
+        estimator.estimate(A, B)
+
+        self.assertGreaterEqual(estimator.d, 0)
+        self.assertEqual(estimator.r, 0)
+        self.assertEqual(estimator.m, 0)
