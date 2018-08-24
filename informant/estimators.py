@@ -495,15 +495,17 @@ class TransferEntropy(Estimator):
             # return 0
 
         d = 0.
-        for i_n in range(self.Nx):
-            for j_n in range(self.Ny):
-                for i_np1 in range(self.Nx):
+        for j_n in range(self.Ny):
+            for i_n in range(self.Nx):
+                for j_np1 in range(self.Ny):
                     if i_n + self.Nx * j_n in self.p_estimator.active_set_xy:
-                        p_inp1_given_in_jn = np.array([tmat_xy[i_n + self.Nx*j_n, i_np1 +
-                                                               self.Nx * jnp1] for jnp1 in range(self.Ny)]).sum()
-
-                        d += pi_dep[i_n + self.Nx  * j_n] * p_inp1_given_in_jn * np.log2(p_inp1_given_in_jn /
-                                                                                         tmat_x[i_n, i_np1])
+                        p_jnp1_given_in_jn = np.array([tmat_xy[full2active[i_n + self.Nx*j_n],
+                                                               full2active[i_np1 + self.Nx * j_np1]]
+                                                       for i_np1 in range(self.Nx)
+                                                       if i_np1 + self.Nx * j_np1 in self.p_estimator.active_set_xy]).sum()
+                        if p_jnp1_given_in_jn > 1e-16:
+                            d += pi_dep[i_n + self.Nx  * j_n] * p_jnp1_given_in_jn * np.log2(p_jnp1_given_in_jn /
+                                                                                             tmat_y[j_n, j_np1])
         return d, 0., 0.
 
 
