@@ -25,6 +25,7 @@ class MSMProbabilities:
         self._pi_x, self._pi_y, self._pi_xy = None, None, None
 
         self._user_tmat_x, self._user_tmat_y, self._user_tmat_xy = False, False, False
+        self.msmkwargs = None
 
         self._estimated = False
 
@@ -37,6 +38,8 @@ class MSMProbabilities:
         :param Y: time-series 2
         :return: self
         """
+        self.msmkwargs = kwargs
+
         if not isinstance(X, list): X = [X]
         if not isinstance(Y, list): Y = [Y]
 

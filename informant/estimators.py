@@ -76,6 +76,8 @@ class Estimator(object):
                 raise NotImplementedError('Transforming XY-transition matrix into YX-formulation not implemented.')
             if self.p_estimator._dangerous_ignore_warnings_flag:
                 reverse_p_estimator._dangerous_ignore_warnings_flag = True
+            if self.p_estimator.msmkwargs is not None:
+                reverse_p_estimator.estimate(B, A, **self.p_estimator.msmkwargs)
 
         self.reverse_estimator = self.__class__(reverse_p_estimator)
         self.reverse_estimator.estimate(B, A, traj_eq_reweighting=traj_eq_reweighting)
