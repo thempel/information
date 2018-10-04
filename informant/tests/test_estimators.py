@@ -177,3 +177,18 @@ class TestSimple(unittest.TestCase):
         self.assertGreaterEqual(estimator.d, 0)
         self.assertEqual(estimator.r, 0)
         self.assertEqual(estimator.m, 0)
+
+    def test_compare_I4_I3(self):
+        prob_est = informant.MSMProbabilities(msmlag=1)
+        A = np.random.randint(0, 3, 5000)
+        B = np.random.randint(0, 4, 5000)
+
+        ensemble_estimator = informant.JiaoI3(prob_est)
+        ensemble_estimator.estimate(A, B)
+
+        estimator = informant.JiaoI4Ensemble(prob_est)
+        estimator.estimate(A, B)
+
+        self.assertAlmostEqual(estimator.d, ensemble_estimator.d, places=2)
+        self.assertAlmostEqual(estimator.r, ensemble_estimator.r, places=2)
+        self.assertAlmostEqual(estimator.m, ensemble_estimator.m, places=2)

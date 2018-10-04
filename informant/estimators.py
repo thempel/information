@@ -433,6 +433,9 @@ class JiaoI3(Estimator):
         tmat_xy = self.p_estimator.tmat_xy
         msmlag = self.p_estimator.msmlag
 
+        if self.p_estimator._dangerous_ignore_warnings_flag:
+            raise NotImplementedError('Handling disconnected states not implemented in this method.')
+
         # iterate over time-lagged trajectory pairs
         d, r, m = 0., 0., 0.
         for ix_time_tau, iy_time_tau in zip(x_lagged, y_lagged):
@@ -448,14 +451,15 @@ class JiaoI3(Estimator):
                 prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + self.Nx * yi, xip1 + self.Nx * _y] for _y in range(self.Ny)])
 
             px_given_y = prob_xi_to_xip1_given_yi[ix_time_tau, :, iy_time_tau]
-
-            py_given_y_XY = pxy / np.tile(px_given_y, self.Nx)
+            with np.errstate(divide='ignore', invalid='ignore'):
+                # context manager to avoid warnings of the 1/0 elements that are discarded by np.where
+                py_given_y_XY = np.where(pxy > 0, pxy / np.tile(px_given_y, self.Ny), 0)
 
             temp_mi, temp_di, temp_rev_di = np.zeros(len(ix_time_tau)), np.zeros(
                 len(ix_time_tau)), np.zeros(len(ix_time_tau))
             t = np.arange(py_given_y_XY.shape[0], dtype=int)
             for iy in range(self.Ny):
-                pidx = (py_given_y_XY[range(py_given_y_XY.shape[0]), ix_time_tau + self.Nx * iy] > 0).squeeze()  # def 0 * log(0) := 0
+                pidx = (py_given_y_XY[t, ix_time_tau + self.Nx * iy] > 0).squeeze()  # def 0 * log(0) := 0
 
                 temp_di[pidx] = temp_di[pidx] + py_given_y_XY[t[pidx], ix_time_tau[pidx] + self.Nx * iy] * \
                                     np.log2(py_given_y_XY[t[pidx], ix_time_tau[pidx] + self.Nx * iy] / \
@@ -463,7 +467,9 @@ class JiaoI3(Estimator):
                 temp_mi[pidx] = temp_mi[pidx] + py_given_y_XY[t[pidx], ix_time_tau[pidx] + self.Nx * iy] * \
                                     np.log2(pxy[t[pidx], ix_time_tau[pidx] + self.Nx * iy] / \
                                             (py[pidx, iy] * px[t[pidx], ix_time_tau[pidx]]))
-                temp_rev_di[pidx] = temp_rev_di[pidx] + px_given_y[pidx, iy] * np.log2(px_given_y[pidx, iy] / px[pidx, iy])
+                temp_rev_di[pidx] = temp_rev_di[pidx] + px_given_y[t[pidx], ix_time_tau[pidx]] * \
+                                                        np.log2(px_given_y[t[pidx], ix_time_tau[pidx]] / \
+                                                                px[t[pidx], ix_time_tau[pidx]])
 
             d += temp_di.mean() / msmlag
             r += temp_rev_di.mean() / msmlag
