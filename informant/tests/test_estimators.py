@@ -192,3 +192,18 @@ class TestSimple(unittest.TestCase):
         self.assertAlmostEqual(estimator.d, ensemble_estimator.d, places=2)
         self.assertAlmostEqual(estimator.r, ensemble_estimator.r, places=2)
         self.assertAlmostEqual(estimator.m, ensemble_estimator.m, places=2)
+
+    def test_compare_ensemble_timeav_I3(self):
+        prob_est = informant.MSMProbabilities(msmlag=1, reversible=False)
+        A = np.random.randint(0, 2, 10000)
+        B = np.random.randint(0, 2, 10000)
+
+        ensemble_estimator = informant.JiaoI3Ensemble(prob_est)
+        ensemble_estimator.estimate(A, B)
+
+        estimator = informant.JiaoI3(prob_est)
+        estimator.estimate(A, B)
+
+        self.assertAlmostEqual(estimator.d, ensemble_estimator.d, places=3)
+        self.assertAlmostEqual(estimator.r, ensemble_estimator.r, places=3)
+        self.assertAlmostEqual(estimator.m, ensemble_estimator.m, places=3)

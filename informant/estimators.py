@@ -478,6 +478,45 @@ class JiaoI3(Estimator):
         return d/len(x_lagged), r/len(x_lagged), m/len(x_lagged)
 
 
+class JiaoI3Ensemble(Estimator):
+    r"""Estimator for Jiao et al I3 for MSM probabilities in ensemble average formulation"""
+    def __init__(self, probability_estimator):
+        super(JiaoI3Ensemble, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, a, b):
+        raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
+
+    def _stationary_estimator(self, x_lagged, y_lagged):
+
+        tmat_x = self.p_estimator.tmat_x
+        tmat_y = self.p_estimator.tmat_y
+        tmat_xy = self.p_estimator.tmat_xy
+
+        pi_xy = self.p_estimator.pi_xy
+
+        pi_dep = np.zeros((self.Nx  * self.Ny))
+        pi_dep[self.p_estimator.active_set_xy] = pi_xy
+
+        full2active = -1 * np.ones(self.Nx * self.Ny, dtype=int)
+        full2active[self.p_estimator.active_set_xy] = np.arange(len(self.p_estimator.active_set_xy))
+
+
+        di, rdi, mi = 0., 0., 0.
+        for xi, xim1, yi, yim1 in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny), range(self.Ny)]):
+            p_xi_yi_given_xim1_yim1 = tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * yi]]
+            p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
+            p_yi_given_xi_xim1_yim1 = p_xi_yi_given_xim1_yim1 / p_xi_given_xim1_yim1
+
+            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * \
+                  np.log2(p_yi_given_xi_xim1_yim1 / tmat_y[yim1, yi])
+            rdi += pi_dep[xim1 + self.Nx * yim1] * p_xi_given_xim1_yim1 * p_xi_given_xim1_yim1 * \
+                   np.log2(p_xi_given_xim1_yim1/tmat_x[xim1, xi])
+            mi += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * \
+                 np.log2(p_xi_yi_given_xim1_yim1/(tmat_y[yim1, yi] * tmat_x[xim1, xi]))
+
+        return di, rdi, mi
+
+
 class TransferEntropy(Estimator):
     r"""Estimator for Schreiber, PRL, 2000"""
     def __init__(self, probability_estimator):

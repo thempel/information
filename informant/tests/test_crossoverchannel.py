@@ -295,3 +295,16 @@ class TestCrossover(unittest.TestCase):
 
         # TODO: compute actual MI value for binary delayed channel.
         self.assertGreaterEqual(estimator.m, self.true_value_DI)
+
+    def test_MSMEnsembleInfoI3(self):
+        """
+        Test MSM probability and I3 ensemble estimator.
+        :return:
+        """
+        prob = informant.MSMProbabilities(reversible=False)
+        estimator = informant.JiaoI3Ensemble(prob)
+        estimator.estimate(self.X, self.Y)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=3)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertLess(estimator.r, .1 * self.true_value_DI)
