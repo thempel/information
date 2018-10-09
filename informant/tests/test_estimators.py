@@ -1,85 +1,68 @@
 import unittest
 import informant
 import numpy as np
+import six
+import itertools
+from utils import GenerateTestMatrix
 
 
-class TestSimple(unittest.TestCase):
+class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
 
-    def test_MSMInfo(self):
-        prob_est = informant.MSMProbabilities(msmlag=1)
-        A = np.random.randint(0, 2, 100)
-        B = np.random.randint(0, 2, 100)
+    di_estimators = (informant.JiaoI4, informant.JiaoI3)
+    all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy)
+    p_estimators = (informant.MSMProbabilities, informant.CTWProbabilities)
 
-        estimator = informant.JiaoI4(prob_est)
+    params = {
+        '_test_binary': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)] +
+                              [dict(di_est=informant.TransferEntropy, p_est=informant.MSMProbabilities)],
+        '_test_multistate': [dict(di_est=d, p_est=informant.MSMProbabilities) for d in all_estimators],
+        # TODO: above should be tested with CTW, too, but seems disfunctional.
+        '_test_compare_ctw_msm': [dict(di_est=d) for d in di_estimators],
+        '_test_symmetric_estimate': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)] +
+                            [dict(di_est=informant.TransferEntropy, p_est=informant.MSMProbabilities)],
 
-        estimator.estimate(A, B)
+        #'_test_polluted_state': [dict(di_est=d, p_est=informant.MSMProbabilities) for d in di_estimators],
+        #'_test_congruency': [dict(di_est1=informant.JiaoI3, di_est2=informant.JiaoI4, p_est=p) for p in p_estimators],
+        #'_test_symmetric_estimate': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)] +
+        #[dict(di_est=informant.TransferEntropy, p_est=informant.MSMProbabilities)],
+        #'_test_multitraj_support': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)]
+    }
 
-        self.assertGreaterEqual(estimator.d, 0)
-        self.assertGreaterEqual(estimator.r, 0)
-        self.assertGreaterEqual(estimator.m, 0)
+    @classmethod
+    def setUpClass(cls):
+        cls.A_binary = np.random.randint(0, 2, 5000)
+        cls.B_binary = np.random.randint(0, 2, 5000)
 
-        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        cls.A_nonbinary = np.random.randint(0, 3, 5000)
+        cls.B_nonbinary = np.random.randint(0, 4, 5000)
 
-    def test_MSMInfo_multistate(self):
-        prob_est = informant.MSMProbabilities(msmlag=1)
-        A = np.random.randint(0, 3, 200)
-        B = np.random.randint(0, 4, 200)
-
-        estimator = informant.JiaoI4(prob_est)
-
-        estimator.estimate(A, B)
-
-        self.assertGreaterEqual(estimator.d, 0)
-        self.assertGreaterEqual(estimator.r, 0)
-        self.assertGreaterEqual(estimator.m, 0)
-
-        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
-
-    def test_MSMInfoEnsemble_multistate(self):
-        prob_est = informant.MSMProbabilities(msmlag=1)
-        A = np.random.randint(0, 3, 200)
-        B = np.random.randint(0, 4, 200)
-
-        estimator = informant.JiaoI4Ensemble(prob_est)
-
-        estimator.estimate(A, B)
+    def _test_binary(self, di_est, p_est):
+        estimator = di_est(p_est()).estimate(self.A_binary, self.B_binary)
 
         self.assertGreaterEqual(estimator.d, 0)
         self.assertGreaterEqual(estimator.r, 0)
         self.assertGreaterEqual(estimator.m, 0)
 
-        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        if not isinstance(estimator, informant.TransferEntropy):
+            self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=1)
 
-    def test_compare_ensemble_timeav(self):
-        prob_est = informant.MSMProbabilities(msmlag=1)
-        A = np.random.randint(0, 3, 1000)
-        B = np.random.randint(0, 4, 1000)
-
-        ensemble_estimator = informant.JiaoI4Ensemble(prob_est)
-        ensemble_estimator.estimate(A, B)
-
-        estimator = informant.JiaoI4(prob_est)
-        estimator.estimate(A, B)
-
-        self.assertAlmostEqual(estimator.d, ensemble_estimator.d, places=4)
-        self.assertAlmostEqual(estimator.r, ensemble_estimator.r, places=4)
-        self.assertAlmostEqual(estimator.m, ensemble_estimator.m, places=4)
-
-
-    def test_CTWInfo(self):
-        prob_est = informant.CTWProbabilities(D=3)
-        A = np.random.randint(0, 2, 100)
-        B = np.random.randint(0, 2, 100)
-
-        estimator = informant.JiaoI4(prob_est)
-
-        estimator.estimate(A, B)
+    def _test_multistate(self, di_est, p_est):
+        estimator = di_est(p_est()).estimate(self.A_nonbinary, self.B_nonbinary)
 
         self.assertGreaterEqual(estimator.d, 0)
         self.assertGreaterEqual(estimator.r, 0)
         self.assertGreaterEqual(estimator.m, 0)
 
-        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
+        if not isinstance(estimator, informant.TransferEntropy):
+            self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=1)
+
+    def _test_compare_ctw_msm(self, di_est):
+        est_msm = di_est(informant.MSMProbabilities()).estimate(self.A_binary, self.B_binary)
+        est_ctw= di_est(informant.CTWProbabilities()).estimate(self.A_binary, self.B_binary)
+
+        self.assertAlmostEqual(est_msm.d, est_ctw.d, places=2)
+        self.assertAlmostEqual(est_msm.r, est_ctw.r, places=2)
+        self.assertAlmostEqual(est_msm.m, est_ctw.m, places=2)
 
     def test_CTWInfo_bad_traj(self):
         prob_est = informant.CTWProbabilities(D=3)
@@ -96,60 +79,18 @@ class TestSimple(unittest.TestCase):
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
 
-    def test_CTWInfoI3(self):
-        prob_est = informant.CTWProbabilities(D=5)
-        A = np.random.randint(0, 2, 1000)
-        B = np.random.randint(0, 2, 1000)
+    def _test_symmetric_estimate(self, di_est, p_est):
+        A = self.A_binary
+        B = self.B_binary
 
-        estimator = informant.JiaoI3(prob_est)
-
-        estimator.estimate(A, B)
-
-        self.assertGreaterEqual(estimator.d, 0)
-        self.assertGreaterEqual(estimator.r, 0)
-        self.assertGreaterEqual(estimator.m, 0)
-
-        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
-
-    def test_MSMInfoI3(self):
-        A = np.random.randint(0, 2, size=1000)
-        B = np.random.randint(0, 2, size=1000)
-        prob_est = informant.MSMProbabilities()
-
-        estimator = informant.JiaoI3(prob_est)
-        estimator.estimate(A, B)
-
-        self.assertGreaterEqual(estimator.d, 0)
-        self.assertGreaterEqual(estimator.r, 0)
-        self.assertGreaterEqual(estimator.m, 0)
-
-        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
-
-    def test_symmetric_estimate(self):
-        A = np.random.randint(0, 2, size=1000)
-        B = np.random.randint(0, 2, size=1000)
-        prob_est_AB = informant.MSMProbabilities()
-        prob_est_BA = informant.MSMProbabilities()
-
-        estimator_AB = informant.JiaoI4(prob_est_AB).symmetrized_estimate(A, B)
-        estimator_BA = informant.JiaoI4(prob_est_BA).symmetrized_estimate(B, A)
+        estimator_AB = di_est(p_est()).symmetrized_estimate(A, B)
+        estimator_BA = di_est(p_est()).symmetrized_estimate(B, A)
 
         self.assertAlmostEqual(estimator_AB.r, estimator_BA.d)
         self.assertAlmostEqual(estimator_AB.d, estimator_BA.r)
         self.assertAlmostEqual(estimator_AB.m, estimator_BA.m)
 
-    def test_symmetric_estimate_CTW(self):
-        A = np.random.randint(0, 2, size=1000)
-        B = np.random.randint(0, 3, size=1000)
-        prob_est_AB = informant.CTWProbabilities(3)
-        prob_est_BA = informant.CTWProbabilities(3)
 
-        estimator_AB = informant.JiaoI4(prob_est_AB).symmetrized_estimate(A, B)
-        estimator_BA = informant.JiaoI4(prob_est_BA).symmetrized_estimate(B, A)
-
-        self.assertAlmostEqual(estimator_AB.r, estimator_BA.d)
-        self.assertAlmostEqual(estimator_AB.d, estimator_BA.r)
-        self.assertAlmostEqual(estimator_AB.m, estimator_BA.m)
 
     def test_MSMInfoRew(self):
         prob_est = informant.MSMProbabilities(msmlag=1)
@@ -166,44 +107,16 @@ class TestSimple(unittest.TestCase):
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
 
-    def test_MSM_TE(self):
-        A = np.random.randint(0, 2, size=1000)
-        B = np.random.randint(0, 2, size=1000)
-        prob_est = informant.MSMProbabilities()
-
-        estimator = informant.TransferEntropy(prob_est)
-        estimator.estimate(A, B)
-
-        self.assertGreaterEqual(estimator.d, 0)
-        self.assertEqual(estimator.r, 0)
-        self.assertEqual(estimator.m, 0)
-
     def test_compare_I4_I3(self):
         prob_est = informant.MSMProbabilities(msmlag=1)
-        A = np.random.randint(0, 3, 5000)
-        B = np.random.randint(0, 4, 5000)
 
-        ensemble_estimator = informant.JiaoI3(prob_est)
-        ensemble_estimator.estimate(A, B)
+        est1 = informant.JiaoI3(prob_est)
+        est1.estimate(self.A_nonbinary, self.B_nonbinary)
 
-        estimator = informant.JiaoI4Ensemble(prob_est)
-        estimator.estimate(A, B)
+        est2 = informant.JiaoI4(prob_est)
+        est2.estimate(self.A_nonbinary, self.B_nonbinary)
 
-        self.assertAlmostEqual(estimator.d, ensemble_estimator.d, places=2)
-        self.assertAlmostEqual(estimator.r, ensemble_estimator.r, places=2)
-        self.assertAlmostEqual(estimator.m, ensemble_estimator.m, places=2)
+        self.assertAlmostEqual(est2.d, est1.d, places=1)
+        self.assertAlmostEqual(est2.r, est1.r, places=1)
+        self.assertAlmostEqual(est2.m, est1.m, places=1)
 
-    def test_compare_ensemble_timeav_I3(self):
-        prob_est = informant.MSMProbabilities(msmlag=1, reversible=False)
-        A = np.random.randint(0, 2, 10000)
-        B = np.random.randint(0, 2, 10000)
-
-        ensemble_estimator = informant.JiaoI3Ensemble(prob_est)
-        ensemble_estimator.estimate(A, B)
-
-        estimator = informant.JiaoI3(prob_est)
-        estimator.estimate(A, B)
-
-        self.assertAlmostEqual(estimator.d, ensemble_estimator.d, places=3)
-        self.assertAlmostEqual(estimator.r, ensemble_estimator.r, places=3)
-        self.assertAlmostEqual(estimator.m, ensemble_estimator.m, places=3)
