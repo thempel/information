@@ -7,7 +7,7 @@ class MSMProbabilities:
     """
     Wrapper class for PyEMMA to estimate conditional transition probabilities.
     """
-    def __init__(self, msmlag=1, reversible=True, tmat_ck_estimate=False):
+    def __init__(self, msmlag=1, reversible=False, tmat_ck_estimate=False):
         """
         Computes conditional transition probabilities from MSMs with PyEMMA.
         :param msmlag: MSM lag time (int)
@@ -150,7 +150,7 @@ class MSMProbabilities:
 
 
 class CTWProbabilities:
-    def __init__(self, D):
+    def __init__(self, D=5):
         """
         Implementation of CTW algorithm as described by Jiao et al.
         :param D: context tree depth
