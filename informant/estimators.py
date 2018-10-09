@@ -232,56 +232,6 @@ class JiaoI4(Estimator):
         tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
-        msmlag = self.p_estimator.msmlag
-
-        # iterate over time-lagged trajectory pairs
-        d, r, m = 0., 0., 0.
-        for ix_time_tau, iy_time_tau in zip(x_lagged, y_lagged):
-            ixy_time_tau = ix_time_tau + self.Nx * iy_time_tau
-
-            # compute probability trajectories from state x_{i-1} to any possible state x_i
-            px = tmat_x[ix_time_tau, :]
-            py = tmat_y[iy_time_tau, :]
-            pxy = tmat_xy[ixy_time_tau, :]
-
-            prob_xi_to_xip1_given_yi = np.zeros((self.Nx, self.Nx, self.Ny))
-            for xi, xip1, yi in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny)]):
-                prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + self.Nx * yi, xip1 + self.Nx * _y] for _y in range(self.Ny)])
-
-            px_given_y = prob_xi_to_xip1_given_yi[ix_time_tau, :, iy_time_tau]
-
-            temp_mi, temp_di, temp_rev_di = np.zeros(len(ix_time_tau)), np.zeros(
-                len(ix_time_tau)), np.zeros(len(ix_time_tau))
-
-            for iy in range(self.Ny):  # ix, iy now iterating over indicator states, not original state numbers
-                for ix in range(self.Nx):
-                    pidx = pxy[:, ix + iy * self.Nx] > 0  # def 0 * log(0) := 0
-                    temp_mi[pidx] = temp_mi[pidx] + pxy[pidx, ix + iy * self.Nx] * np.log2(
-                        pxy[pidx, ix + iy * self.Nx] / (py[pidx, iy] * px[pidx, ix]))
-                    temp_di[pidx] = temp_di[pidx] + pxy[pidx, ix + iy * self.Nx] * np.log2(
-                        pxy[pidx, ix + iy * self.Nx] / (py[pidx, iy] * px_given_y[pidx, ix]))
-                    temp_rev_di[pidx] = temp_rev_di[pidx] + pxy[pidx, ix + iy * self.Nx] * np.log2(
-                        px_given_y[pidx, ix] / px[pidx, ix])
-            d += temp_di.mean() / msmlag
-            r += temp_rev_di.mean() / msmlag
-            m += temp_mi.mean() / msmlag
-
-        return d/len(x_lagged), r/len(x_lagged), m/len(x_lagged)
-
-
-class JiaoI4Ensemble(Estimator):
-    r"""Estimator for Jiao et al I4 for MSM probabilities in ensemble average formulation"""
-    def __init__(self, probability_estimator):
-        super(JiaoI4Ensemble, self).__init__(probability_estimator)
-
-    def _nonstationary_estimator(self, a, b):
-        raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
-
-    def _stationary_estimator(self, x_lagged, y_lagged):
-
-        tmat_x = self.p_estimator.tmat_x
-        tmat_y = self.p_estimator.tmat_y
-        tmat_xy = self.p_estimator.tmat_xy
 
         pi_xy = self.p_estimator.pi_xy
 
@@ -321,6 +271,18 @@ class JiaoI4Ensemble(Estimator):
                     tmat_xy_fullset[idx] / (tmat_y_at_yi_bloated * tmat_x_at_xi_bloated)[idx]))
 
         return di, rdi, mi
+
+
+class JiaoI4Ensemble(Estimator):
+    r"""Estimator for Jiao et al I4 for MSM probabilities in ensemble average formulation"""
+    def __init__(self, probability_estimator):
+        super(JiaoI4Ensemble, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, a, b):
+        raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
+
+    def _stationary_estimator(self, x_lagged, y_lagged):
+        raise DeprecationWarning('Use JiaoI4 instead!')
 
 
 class JiaoI3(Estimator):
@@ -431,66 +393,6 @@ class JiaoI3(Estimator):
         tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
-        msmlag = self.p_estimator.msmlag
-
-        if self.p_estimator._dangerous_ignore_warnings_flag:
-            raise NotImplementedError('Handling disconnected states not implemented in this method.')
-
-        # iterate over time-lagged trajectory pairs
-        d, r, m = 0., 0., 0.
-        for ix_time_tau, iy_time_tau in zip(x_lagged, y_lagged):
-            ixy_time_tau = ix_time_tau + self.Nx * iy_time_tau
-
-            # compute probability trajectories from state x_{i-1} to any possible state x_i
-            px = tmat_x[ix_time_tau, :]
-            py = tmat_y[iy_time_tau, :]
-            pxy = tmat_xy[ixy_time_tau, :]
-
-            prob_xi_to_xip1_given_yi = np.zeros((self.Nx, self.Nx, self.Ny))
-            for xi, xip1, yi in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny)]):
-                prob_xi_to_xip1_given_yi[xi, xip1, yi] = np.sum([tmat_xy[xi + self.Nx * yi, xip1 + self.Nx * _y] for _y in range(self.Ny)])
-
-            px_given_y = prob_xi_to_xip1_given_yi[ix_time_tau, :, iy_time_tau]
-            with np.errstate(divide='ignore', invalid='ignore'):
-                # context manager to avoid warnings of the 1/0 elements that are discarded by np.where
-                py_given_y_XY = np.where(pxy > 0, pxy / np.tile(px_given_y, self.Ny), 0)
-
-            temp_mi, temp_di, temp_rev_di = np.zeros(len(ix_time_tau)), np.zeros(
-                len(ix_time_tau)), np.zeros(len(ix_time_tau))
-            t = np.arange(py_given_y_XY.shape[0], dtype=int)
-            for iy in range(self.Ny):
-                pidx = (py_given_y_XY[t, ix_time_tau + self.Nx * iy] > 0).squeeze()  # def 0 * log(0) := 0
-
-                temp_di[pidx] = temp_di[pidx] + py_given_y_XY[t[pidx], ix_time_tau[pidx] + self.Nx * iy] * \
-                                    np.log2(py_given_y_XY[t[pidx], ix_time_tau[pidx] + self.Nx * iy] / \
-                                            py[pidx, iy])
-                temp_mi[pidx] = temp_mi[pidx] + py_given_y_XY[t[pidx], ix_time_tau[pidx] + self.Nx * iy] * \
-                                    np.log2(pxy[t[pidx], ix_time_tau[pidx] + self.Nx * iy] / \
-                                            (py[pidx, iy] * px[t[pidx], ix_time_tau[pidx]]))
-                temp_rev_di[pidx] = temp_rev_di[pidx] + px_given_y[t[pidx], ix_time_tau[pidx]] * \
-                                                        np.log2(px_given_y[t[pidx], ix_time_tau[pidx]] / \
-                                                                px[t[pidx], ix_time_tau[pidx]])
-
-            d += temp_di.mean() / msmlag
-            r += temp_rev_di.mean() / msmlag
-            m += temp_mi.mean() / msmlag
-
-        return d/len(x_lagged), r/len(x_lagged), m/len(x_lagged)
-
-
-class JiaoI3Ensemble(Estimator):
-    r"""Estimator for Jiao et al I3 for MSM probabilities in ensemble average formulation"""
-    def __init__(self, probability_estimator):
-        super(JiaoI3Ensemble, self).__init__(probability_estimator)
-
-    def _nonstationary_estimator(self, a, b):
-        raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
-
-    def _stationary_estimator(self, x_lagged, y_lagged):
-
-        tmat_x = self.p_estimator.tmat_x
-        tmat_y = self.p_estimator.tmat_y
-        tmat_xy = self.p_estimator.tmat_xy
 
         pi_xy = self.p_estimator.pi_xy
 
@@ -515,6 +417,18 @@ class JiaoI3Ensemble(Estimator):
                  np.log2(p_xi_yi_given_xim1_yim1/(tmat_y[yim1, yi] * tmat_x[xim1, xi]))
 
         return di, rdi, mi
+
+
+class JiaoI3Ensemble(Estimator):
+    r"""Estimator for Jiao et al I3 for MSM probabilities in ensemble average formulation"""
+    def __init__(self, probability_estimator):
+        super(JiaoI3Ensemble, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, a, b):
+        raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
+
+    def _stationary_estimator(self, x_lagged, y_lagged):
+        raise DeprecationWarning('Use JiaoI3 instead!')
 
 
 class TransferEntropy(Estimator):
