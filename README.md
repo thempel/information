@@ -47,6 +47,8 @@ that they originally implemented with the CTW-algorithm in matlab [2].
     http://arxiv.org/abs/1201.2334.
 
 [2] https://github.com/EEthinker/Universal_directed_information
+
 [3] Schreiber, 'Measuring Information Transfer', PRL, 2000
+
 [4] Scherer et al, 'PyEMMA 2: A Software Package for Estimation,
     Validation, and Analysis of Markov Models', JCTC 2015.
