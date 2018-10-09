@@ -20,7 +20,7 @@ i_estimator = SomeInformationEstimator(p_estimator)
 i_estimator.estimate(A, B)
 
 # third, access directed information (or transfer entropy), reverse
-directed information and mutual information:
+# directed information and mutual information:
 i_estimator.d, i_estimator.r, i_estimator.m
 ```
 
