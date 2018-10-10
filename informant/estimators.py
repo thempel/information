@@ -406,6 +406,11 @@ class JiaoI3(Estimator):
         di, rdi, mi = 0., 0., 0.
         for xi, xim1, yi, yim1 in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny), range(self.Ny)]):
             p_xi_yi_given_xim1_yim1 = tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * yi]]
+
+            # skip if transition has not been observed in the data
+            if p_xi_yi_given_xim1_yim1 == 0:
+                continue
+
             p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
             p_yi_given_xi_xim1_yim1 = p_xi_yi_given_xim1_yim1 / p_xi_given_xim1_yim1
 
