@@ -36,6 +36,7 @@ class MSMProbabilities:
         Estimates MSM probabilities from two time series separately and in combined.
         :param X: time-series 1
         :param Y: time-series 2
+        :param kwargs: keyword arguments passed to pyemma.msm.estimate_markov_model()
         :return: self
         """
         self.msmkwargs = kwargs

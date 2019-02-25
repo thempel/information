@@ -37,9 +37,13 @@ by Schreiber [3].
 #### Directed information / transfer entropy estimators
 This code relies on directed information estimators described by [1]
 that they originally implemented with the CTW-algorithm in matlab [2].
+Transfer entropy and stationary distribution-based mutual information
+estimator were described by [3].
+
 1) Directed information I4 estimator (`JiaoI4`)
 2) Directed information I3 estimator (`JiaoI3`)
 3) Transfer entropy estimator (`TransferEntropy`)
+4) Mutual information estimator (`MutualInfoStationaryDistribution`)
 
 ### Literature
 [1] J. Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal

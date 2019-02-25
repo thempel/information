@@ -26,7 +26,7 @@ class TestCoupledMapLattice(unittest.TestCase):
     def setUpClass(cls):
         cls.eps = 0.03
         cls.partition = 0.5
-        cls.n_trails = 10
+        cls.n_trails = 20
 
         cls.true_value_TE = 0.77**2 * np.square(cls.eps) / np.log(2)
 

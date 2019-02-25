@@ -5,7 +5,7 @@ from informant import utils
 
 
 class Estimator(object):
-    """ Base class for directed informant estimators
+    """ Base class for directed information estimators
 
     """
     def __init__(self, probability_estimator):
