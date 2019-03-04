@@ -10,18 +10,32 @@ def relabel_dtrajs(X):
 
     return _x
 
-def ensure_dtraj_format(A, B):
+def ensure_dtraj_format(A, B, W=None):
+
     if not isinstance(A, list): A = [A]
     if not isinstance(B, list): B = [B]
     assert isinstance(A[0], np.ndarray)
     assert isinstance(B[0], np.ndarray)
 
-    for n, (a1, a2) in enumerate(zip(A, B)):
-        if a1.shape[0] != a2.shape[0]:
-            raise RuntimeError('Trajectories not compatible. Lengths of {}th trajs are {} and {}, '
-                               'respectively.'.format(n, a1.shape[0], a2.shape[0]))
+    if W is None:
+        for n, (a1, a2) in enumerate(zip(A, B)):
+            if a1.shape[0] != a2.shape[0]:
+                raise RuntimeError('Trajectories not compatible. Lengths of {}th trajs are {} and {}, '
+                                   'respectively.'.format(n, a1.shape[0], a2.shape[0]))
 
-    return A, B
+        return A, B
+
+    else:
+        if not isinstance(W, list): W = [W]
+        assert isinstance(W[0], np.ndarray)
+
+        for n, (a1, a2, a3) in enumerate(zip(A, B, W)):
+            if a1.shape[0] != a2.shape[0] or a1.shape[0] != a3.shape[0]:
+                raise RuntimeError('Trajectories not compatible. Lengths of {}th trajs are {}, {} and {}, '
+                                   'respectively.'.format(n, a1.shape[0], a2.shape[0], a3.shape[0]))
+
+        return A, B, W
+
 
 def reweight_trajectories(A, B, p, size=None):
     """

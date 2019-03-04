@@ -149,6 +149,45 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         self.assertGreaterEqual(estimator.m, self.true_value_DI)
 
 
+class TestTriplet(unittest.TestCase):
+    """
+    Cross-over channel test. Directed information can be computed analytically.
+    Class sets up a simple binary channel with cross-overs and delay.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        p = 0.3
+        eps = .2
+        N = int(1e4)
+        T = np.array([[1 - p, p], [p, 1 - p]])
+        X = msmtools.generation.generate_traj(T, N)
+        _errbits = np.random.rand(N) < eps
+        Y = X.copy()
+        Y[_errbits] = 1 - Y[_errbits]
+
+        _errbits = np.random.rand(N) < eps
+        Z = Y.copy()
+        Z[_errbits] = 1 - Z[_errbits]
+
+        cls.X = X[2:]
+        cls.Y = Y[1:-1]
+        cls.Z = Z[:-2]
+
+    def _test_simple(self):
+
+        # test if direct link is detected with causally cond entropy > 0
+        estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
+        estimator.estimate(self.X, self.Y, self.Z)
+
+        self.assertGreater(estimator.causally_conditioned_di, 0.)
+
+        # test if indirect link is detected with causally cond entropy ~ 0.
+        estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
+        estimator.estimate(self.X, self.Z, self.Y)
+
+        self.assertAlmostEquals(estimator.causally_conditioned_di, 0.)
+
 
 if __name__ == '__main__':
     unittest.main()

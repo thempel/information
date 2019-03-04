@@ -507,14 +507,121 @@ class MutualInfoStationaryDistribution(Estimator):
         return 0., 0., m
 
 
-class CausallyConditionedDI:
+
+class MultiEstimator(object):
+    """ Base class for directed information estimators with multiple processes
+
+    """
+    def __init__(self, probability_estimator):
+        """
+
+        :param probability_estimator: informant.ProbabilityEstimator class
+        """
+        from informant import NetMSMProbabilities
+        assert isinstance(probability_estimator, NetMSMProbabilities)
+        self.p_estimator = probability_estimator
+
+        self.causally_conditioned_di = None
+        self.Nx, self.Ny, self.Nw = 0, 0, 0
+
+    def estimate(self, A, B, W_, traj_eq_reweighting=False):
+        """
+        Convenience function for causally conditioned directed information
+        :param A: np.array or list of np.arrays of dtype int. time series A
+        :param B: np.array or list of np.arrays of dtype int. time series B
+        :param W: np.array or list of np.arrays of dtype int. time series W, conditioned upon which DI is estimated
+        Can be either supplied in same format as A, B or a list of multiple conditional time series in this format.
+        :traj_eq_reweighting : reweight trajectories according to stationary distribution
+            only stationary estimates, experimental (not implemented)
+        :return: self
+        """
+
+        if isinstance(W_, np.ndarray):
+            A, B, W_ = utils.ensure_dtraj_format(A, B, W_)
+            W_ = [W_]
+        elif (isinstance(W_, list) and isinstance(W_[0], np.ndarray) and isinstance(A, np.ndarray)) or (
+                isinstance(W_, list) and isinstance(W_[0], list) and isinstance(W_[0][0], np.ndarray)
+        ):
+            formatted_W = []
+            for _w in W_:
+                A, B, _w = utils.ensure_dtraj_format(A, B, _w)
+                formatted_W.append(_w)
+            W_ = formatted_W
+        else:
+            raise RuntimeError('W must be a list of arrays (single condition) or a list of lists of arrays '
+                               '(multiple conditions)')
+
+        self.Nx = np.unique(np.concatenate(A)).max() + 1
+        self.Ny = np.unique(np.concatenate(B)).max() + 1
+
+        self.causally_conditioned_di = np.zeros(len(W_))
+        for n_w, W in enumerate(W_):
+            self.Nw = np.unique(np.concatenate(W)).max() + 1
+
+            # new estimate for each W.
+            self.p_estimator.estimate(W, A, B)
+
+            if self.p_estimator.is_stationary_estimate:
+                if not traj_eq_reweighting:
+                    _causally_conditioned_di = self.stationary_estimate(W, A, B)
+                else:
+                    raise NotImplementedError('Equilibrium traj reweighting not yet implemented.')
+            else:
+                _causally_conditioned_di = self.nonstationary_estimate(A, B)
+
+            self.causally_conditioned_di[n_w] = _causally_conditioned_di
+
+        return self
+
+    def _stationary_estimator(self, w, a, b):
+        raise NotImplementedError(
+            'You need to overload the _stationary_estimator() method in your Estimator implementation!')
+
+    def _nonstationary_estimator(self, w, a, b):
+        raise NotImplementedError(
+            'You need to overload the _nonstationary_estimator() method in your Estimator implementation!')
+
+    def stationary_estimate(self, W, X, Y):
+        """
+        Directed informant estimation on discrete trajectories with Markov model
+        probability estimates.
+
+        :param X: Time-series 1
+        :param Y: Time-series 2
+        :return: di, rdi, mi
+        """
+        msmlag = self.p_estimator.msmlag
+
+
+        tmat_wy = self.p_estimator.tmat_wy
+        tmat_wyx = self.p_estimator.tmat_wyx
+
+        assert np.unique(np.concatenate(X)).min() == 0
+        assert np.unique(np.concatenate(Y)).min() == 0
+        assert np.unique(np.concatenate(W)).min() == 0
+
+        assert self.Ny * self.Nw == tmat_wy.shape[0]
+        assert self.Ny * self.Nw * self.Nx == tmat_wyx.shape[0]
+
+        x_lagged = lag_observations(X, msmlag)
+        y_lagged = lag_observations(Y, msmlag)
+        w_lagged = lag_observations(W, msmlag)
+
+        causally_cond_di = self._stationary_estimator(w_lagged, x_lagged, y_lagged)
+
+        return causally_cond_di
+
+    def nonstationary_estimate(self, A, B):
+        raise NotImplementedError('Not implemented.')
+
+
+class CausallyConditionedDI(MultiEstimator):
     r"""Estimator for causally condited directed information as described by Quinn et al 2011"""
     def __init__(self, probability_estimator):
-        self.p_estimator = probability_estimator
-        self.Nw, self.Nx, self.Ny = None, None, None
+        super(CausallyConditionedDI, self).__init__(probability_estimator)
 
 
-    def _nonstationary_estimator(self, X, Y):
+    def _nonstationary_estimator(self, W, X, Y):
         raise NotImplementedError
 
     def _stationary_estimator(self, w_lagged, x_lagged, y_lagged):
@@ -597,4 +704,4 @@ class CausallyConditionedDI:
                 p_yi_given_wi_wim1_yim1_xi_xim1)
 
 
-        return H_Y_cond_W, H_Y_cond_XW
+        return H_Y_cond_W - H_Y_cond_XW
