@@ -508,9 +508,10 @@ class MutualInfoStationaryDistribution(Estimator):
 
 
 class CausallyConditionedDI:
-    r"""Estimator for Jiao et al I3 with CTW and MSM probabilities"""
+    r"""Estimator for causally condited directed information as described by Quinn et al 2011"""
     def __init__(self, probability_estimator):
         self.p_estimator = probability_estimator
+        self.Nw, self.Nx, self.Ny = None, None, None
 
 
     def _nonstationary_estimator(self, X, Y):
@@ -518,14 +519,14 @@ class CausallyConditionedDI:
 
     def _stationary_estimator(self, w_lagged, x_lagged, y_lagged):
         """
-        Implementation of caully conditioned directed information from [1] using Markov model
+        Implementation of causally conditioned directed information from [1] using Markov model
         probability estimates.
 
         [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
-        :param w_lagged: List of binary trajectories conditioned upon which DI is estimated. time step msmlag.
+        :param w_lagged: List of binary trajectories conditioned upon which DI is conditioned. time step msmlag.
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
-        :return: causally conditioned directed informant
+        :return: causally conditioned directed information
         """
 
         ### base class stuff
@@ -560,7 +561,10 @@ class CausallyConditionedDI:
             p_wi_given_wim1_yim1 = np.sum([tmat_wy[full2active_wy[wim1 + self.Nw * yim1], full2active_wy[wi + self.Nw * _y]] for _y in range(self.Ny)])
             p_yi_given_wi_wim1_yim1 = p_wi_yi_given_wim1_yim1 / p_wi_given_wim1_yim1
 
-            H_Y_cond_W -= pi_wy[full2active_wy[wim1 + self.Nw * yim1]]**2 * p_wi_yi_given_wim1_yim1 * p_wi_given_wim1_yim1 * np.log2(p_yi_given_wi_wim1_yim1)
+            # H-rate (does that make sense? it is pi-weighted twice.)
+            #H_Y_cond_W -= pi_wy[full2active_wy[wim1 + self.Nw * yim1]]**2 * p_wi_yi_given_wim1_yim1 * p_wi_given_wim1_yim1 * np.log2(p_yi_given_wi_wim1_yim1)
+            H_Y_cond_W -= pi_wy[full2active_wy[wim1 + self.Nw * yim1]] * p_wi_yi_given_wim1_yim1 * np.log2(
+                p_yi_given_wi_wim1_yim1)
 
         # compute W, X, Y dependent properties
         H_Y_cond_XW = 0.
@@ -577,19 +581,20 @@ class CausallyConditionedDI:
                 continue
 
 
-            p_wi_xi_given_wim1_yim1_xim1 = np.sum(
+            p_yi_given_wim1_yim1_xim1 = np.sum(
                 [tmat_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (self.Nw + self.Ny) * xim1],
                           full2active_wyx[wi + self.Nw * _y + (self.Nw + self.Ny) * xi]] for _y in range(self.Ny)])
 
-            p_yi_given_wim1_yim1_xim1 = np.sum(
-                [tmat_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (self.Nw + self.Ny) * xim1],
-                          full2active_wyx[_w + self.Nw * _y + (self.Nw + self.Ny) * xi]] for _y, _w in
-                 itertools.product(range(self.Ny), range(self.Nw))])
-
             p_yi_given_wi_wim1_yim1_xi_xim1 = p_wi_yi_xi_given_wim1_yim1_xim1 / p_yi_given_wim1_yim1_xim1
 
+            # below: rate
+            #H_Y_cond_XW -= pi_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (
+            #            self.Nw + self.Ny) * xim1]] ** 2 * p_wi_yi_xi_given_wim1_yim1_xim1 * p_wi_xi_given_wim1_yim1_xim1 * np.log2(
+            #    p_yi_given_wi_wim1_yim1_xi_xim1)
+
             H_Y_cond_XW -= pi_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (
-                        self.Nw + self.Ny) * xim1]] ** 2 * p_wi_yi_xi_given_wim1_yim1_xim1 * p_wi_xi_given_wim1_yim1_xim1 * np.log2(
+                    self.Nw + self.Ny) * xim1]] * p_wi_yi_xi_given_wim1_yim1_xim1 * np.log2(
                 p_yi_given_wi_wim1_yim1_xi_xim1)
+
 
         return H_Y_cond_W, H_Y_cond_XW
