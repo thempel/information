@@ -636,11 +636,6 @@ class CausallyConditionedDI(MultiEstimator):
         :return: causally conditioned directed information
         """
 
-        ### base class stuff
-        self.Nw = np.unique(np.concatenate(w_lagged)).max() + 1
-        self.Nx = np.unique(np.concatenate(x_lagged)).max() + 1
-        self.Ny = np.unique(np.concatenate(y_lagged)).max() + 1
-
         tmat_wy = self.p_estimator.tmat_wy
         tmat_wyx = self.p_estimator.tmat_wyx
 
