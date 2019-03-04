@@ -505,3 +505,91 @@ class MutualInfoStationaryDistribution(Estimator):
                     m += pi_dep[n1 + self.Nx*n2] * np.log2(pi_dep[n1 + self.Nx*n2] / (p1 * p2))
 
         return 0., 0., m
+
+
+class CausallyConditionedDI:
+    r"""Estimator for Jiao et al I3 with CTW and MSM probabilities"""
+    def __init__(self, probability_estimator):
+        self.p_estimator = probability_estimator
+
+
+    def _nonstationary_estimator(self, X, Y):
+        raise NotImplementedError
+
+    def _stationary_estimator(self, w_lagged, x_lagged, y_lagged):
+        """
+        Implementation of caully conditioned directed information from [1] using Markov model
+        probability estimates.
+
+        [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
+        :param w_lagged: List of binary trajectories conditioned upon which DI is estimated. time step msmlag.
+        :param x_lagged: List of binary trajectories 1 with time step msmlag.
+        :param y_lagged: List of binary trajectories 2 with time step msmlag.
+        :return: causally conditioned directed informant
+        """
+
+        ### base class stuff
+        self.Nw = np.unique(np.concatenate(w_lagged)).max() + 1
+        self.Nx = np.unique(np.concatenate(x_lagged)).max() + 1
+        self.Ny = np.unique(np.concatenate(y_lagged)).max() + 1
+
+        tmat_wy = self.p_estimator.tmat_wy
+        tmat_wyx = self.p_estimator.tmat_wyx
+
+        pi_wy = self.p_estimator.pi_wy
+        pi_wyx = self.p_estimator.pi_wyx
+
+
+        full2active_wyx = -1 * np.ones(self.Nw * self.Nx * self.Ny, dtype=int)
+        full2active_wyx[self.p_estimator.active_set_wyx] = np.arange(len(self.p_estimator.active_set_wyx))
+
+        full2active_wy = -1 * np.ones(self.Nw * self.Ny, dtype=int)
+        full2active_wy[self.p_estimator.active_set_wy] = np.arange(len(self.p_estimator.active_set_wy))
+
+        # compute W, Y dependent properties
+        H_Y_cond_W = 0.
+        for yi, yim1, wi, wim1 in itertools.product(*[range(self.Ny), range(self.Ny),
+                                                      range(self.Nw), range(self.Nw)]):
+
+            p_wi_yi_given_wim1_yim1 = tmat_wy[full2active_wy[wim1 + self.Nw * yim1], full2active_wy[wi + self.Nw * yi]]
+
+            # skip if transition has not been observed in the data
+            if p_wi_yi_given_wim1_yim1 == 0:
+                continue
+
+            p_wi_given_wim1_yim1 = np.sum([tmat_wy[full2active_wy[wim1 + self.Nw * yim1], full2active_wy[wi + self.Nw * _y]] for _y in range(self.Ny)])
+            p_yi_given_wi_wim1_yim1 = p_wi_yi_given_wim1_yim1 / p_wi_given_wim1_yim1
+
+            H_Y_cond_W -= pi_wy[full2active_wy[wim1 + self.Nw * yim1]]**2 * p_wi_yi_given_wim1_yim1 * p_wi_given_wim1_yim1 * np.log2(p_yi_given_wi_wim1_yim1)
+
+        # compute W, X, Y dependent properties
+        H_Y_cond_XW = 0.
+        for xi, xim1, yi, yim1, wi, wim1 in itertools.product(*[range(self.Nx), range(self.Nx),
+                                                                range(self.Ny), range(self.Ny),
+                                                                range(self.Nw), range(self.Nw)]):
+
+            p_wi_yi_xi_given_wim1_yim1_xim1 = tmat_wyx[
+                full2active_wyx[wim1 + self.Nw * yim1 + (self.Nw + self.Ny) * xim1],
+                full2active_wyx[wi + self.Nw * yi + (self.Nw + self.Ny) * xi]]
+
+            # skip if transition has not been observed in the data
+            if p_wi_yi_xi_given_wim1_yim1_xim1 == 0:
+                continue
+
+
+            p_wi_xi_given_wim1_yim1_xim1 = np.sum(
+                [tmat_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (self.Nw + self.Ny) * xim1],
+                          full2active_wyx[wi + self.Nw * _y + (self.Nw + self.Ny) * xi]] for _y in range(self.Ny)])
+
+            p_yi_given_wim1_yim1_xim1 = np.sum(
+                [tmat_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (self.Nw + self.Ny) * xim1],
+                          full2active_wyx[_w + self.Nw * _y + (self.Nw + self.Ny) * xi]] for _y, _w in
+                 itertools.product(range(self.Ny), range(self.Nw))])
+
+            p_yi_given_wi_wim1_yim1_xi_xim1 = p_wi_yi_xi_given_wim1_yim1_xim1 / p_yi_given_wim1_yim1_xim1
+
+            H_Y_cond_XW -= pi_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (
+                        self.Nw + self.Ny) * xim1]] ** 2 * p_wi_yi_xi_given_wim1_yim1_xim1 * p_wi_xi_given_wim1_yim1_xim1 * np.log2(
+                p_yi_given_wi_wim1_yim1_xi_xim1)
+
+        return H_Y_cond_W, H_Y_cond_XW

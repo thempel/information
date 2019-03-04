@@ -280,3 +280,107 @@ class CTWProbabilities:
         betaTree[0, index] = betaTree[0, index] * pe[xt] / pw[xt]
 
         return countTree, betaTree, eta
+
+
+class NetMSMProbabilities:
+    """
+    Wrapper class for PyEMMA to estimate conditional transition probabilities.
+    """
+    def __init__(self, msmlag=1, reversible=False, tmat_ck_estimate=False):
+        """
+        Computes conditional transition probabilities from MSMs with PyEMMA.
+        :param msmlag: MSM lag time (int)
+        :param reversible: reversible estimate (bool)
+        :param tmat_ck_estimate: Estimate higher lag time transition matrices from CK-equation
+        """
+        self.msmlag = msmlag
+        self.reversible = reversible
+        self.tmat_ck_estimate = tmat_ck_estimate
+
+        self.is_stationary_estimate = True
+
+        self.tmat_wy, self.tmat_wyx = None, None
+        self.active_set_wy, self.active_set_wyx = None, None
+        self._pi_wy, self._pi_wyx = None, None
+
+        self.msmkwargs = None
+
+        self._estimated = False
+
+        self._dangerous_ignore_warnings_flag = False
+
+    def estimate(self, W, X, Y, **kwargs):
+        """
+        Estimates MSM probabilities from two time series separately and in combined.
+        :param W: time-series conditioned upon which DI is estimated
+        :param X: time-series 1
+        :param Y: time-series 2
+        :param kwargs: keyword arguments passed to pyemma.msm.estimate_markov_model()
+        :return: self
+        """
+        self.msmkwargs = kwargs
+
+        if not isinstance(W, list): W = [W]
+        if not isinstance(Y, list): Y = [Y]
+        if not isinstance(X, list): X = [X]
+
+        Nw = np.unique(np.concatenate(W)).max() + 1
+        Ny = np.unique(np.concatenate(Y)).max() + 1
+
+        if not self.tmat_ck_estimate:
+            m = pyemma.msm.estimate_markov_model([_w + Nw * _y for _w, _y in zip(W, Y)],
+                                                 self.msmlag, reversible=self.reversible,
+                                                 **kwargs)
+            self.tmat_wy = m.transition_matrix
+            self.active_set_wy = m.active_set
+
+            m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw + Ny) * _x for _w, _y, _x in zip(W, Y, X)],
+                                                 self.msmlag, reversible=self.reversible,
+                                                 **kwargs)
+            self.tmat_wyx = m.transition_matrix
+            self.active_set_wyx = m.active_set
+
+        else:
+            m = pyemma.msm.estimate_markov_model([_w + Nw * _y for _w, _y in zip(W, Y)],
+                                                 1,
+                                                 reversible=self.reversible,
+                                                 **kwargs)
+            self.tmat_wy = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
+            self.active_set_wy = m.active_set
+
+            m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw + Ny) * _x for _w, _y, _x in zip(W, Y, X)],
+                                                 1,
+                                                 reversible=self.reversible,
+                                                 **kwargs)
+            self.tmat_wyx = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
+            self.active_set_wyx = m.active_set
+
+        if not Nw * Ny == self.tmat_wy.shape[0]:
+            if not self._dangerous_ignore_warnings_flag:
+                raise NotImplementedError('Combined model is not showing all combinatorial states.')
+
+        self._estimated = True
+        return self
+
+    def set_transition_matrices(self, tmat_x=None, tmat_y=None, tmat_xy=None):
+        raise NotImplementedError('This function has not been implemented for NetMSMProbability estimator')
+
+    @property
+    def pi_wy(self):
+        if not self._estimated:
+            raise RuntimeError('Have to estimate before stationary distribution can be computed.')
+
+        if self._pi_wy is None:
+            self._pi_wy = msmtools.analysis.stationary_distribution(self.tmat_wy)
+
+        return self._pi_wy
+
+    @property
+    def pi_wyx(self):
+        if not self._estimated:
+            raise RuntimeError('Have to estimate before stationary distribution can be computed.')
+
+        if self._pi_wyx is None:
+            self._pi_wyx = msmtools.analysis.stationary_distribution(self.tmat_wyx)
+
+        return self._pi_wyx
