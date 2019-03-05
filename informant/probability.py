@@ -306,6 +306,7 @@ class NetMSMProbabilities:
         self.msmkwargs = None
 
         self._estimated = False
+        self._user_tmat_wy, self._user_tmat_wyx = False, False
 
         self._dangerous_ignore_warnings_flag = False
 
@@ -326,44 +327,88 @@ class NetMSMProbabilities:
 
         Nw = np.unique(np.concatenate(W)).max() + 1
         Ny = np.unique(np.concatenate(Y)).max() + 1
+        Nx = np.unique(np.concatenate(X)).max() + 1
 
         if not self.tmat_ck_estimate:
-            m = pyemma.msm.estimate_markov_model([_w + Nw * _y for _w, _y in zip(W, Y)],
-                                                 self.msmlag, reversible=self.reversible,
-                                                 **kwargs)
-            self.tmat_wy = m.transition_matrix
-            self.active_set_wy = m.active_set
-
-            m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw + Ny) * _x for _w, _y, _x in zip(W, Y, X)],
-                                                 self.msmlag, reversible=self.reversible,
-                                                 **kwargs)
-            self.tmat_wyx = m.transition_matrix
-            self.active_set_wyx = m.active_set
+            if not self._user_tmat_wy:
+                m = pyemma.msm.estimate_markov_model([_w + Nw * _y for _w, _y in zip(W, Y)],
+                                                     self.msmlag, reversible=self.reversible,
+                                                     **kwargs)
+                self.tmat_wy = m.transition_matrix
+                self.active_set_wy = m.active_set
+            if not self._user_tmat_wyx:
+                m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw + Ny) * _x for _w, _y, _x in zip(W, Y, X)],
+                                                     self.msmlag, reversible=self.reversible,
+                                                     **kwargs)
+                self.tmat_wyx = m.transition_matrix
+                self.active_set_wyx = m.active_set
 
         else:
-            m = pyemma.msm.estimate_markov_model([_w + Nw * _y for _w, _y in zip(W, Y)],
-                                                 1,
-                                                 reversible=self.reversible,
-                                                 **kwargs)
-            self.tmat_wy = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
-            self.active_set_wy = m.active_set
+            if not self._user_tmat_wy:
+                m = pyemma.msm.estimate_markov_model([_w + Nw * _y for _w, _y in zip(W, Y)],
+                                                     1,
+                                                     reversible=self.reversible,
+                                                     **kwargs)
+                self.tmat_wy = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
+                self.active_set_wy = m.active_set
+            if not self._user_tmat_wyx:
+                m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw + Ny) * _x for _w, _y, _x in zip(W, Y, X)],
+                                                     1,
+                                                     reversible=self.reversible,
+                                                     **kwargs)
+                self.tmat_wyx = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
+                self.active_set_wyx = m.active_set
 
-            m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw + Ny) * _x for _w, _y, _x in zip(W, Y, X)],
-                                                 1,
-                                                 reversible=self.reversible,
-                                                 **kwargs)
-            self.tmat_wyx = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
-            self.active_set_wyx = m.active_set
-
-        if not Nw * Ny == self.tmat_wy.shape[0]:
-            if not self._dangerous_ignore_warnings_flag:
-                raise NotImplementedError('Combined model is not showing all combinatorial states.')
+        if not self._dangerous_ignore_warnings_flag:
+            if not Nw * Ny == self.tmat_wy.shape[0]:
+                    raise NotImplementedError('WY-model is not showing all combinatorial states.')
+            elif not Nw * Ny * Nx == self.tmat_wyx.shape[0]:
+                    raise NotImplementedError('WYX-model is not showing all combinatorial states.')
 
         self._estimated = True
         return self
 
-    def set_transition_matrices(self, tmat_x=None, tmat_y=None, tmat_xy=None):
-        raise NotImplementedError('This function has not been implemented for NetMSMProbability estimator')
+    def set_transition_matrices(self, tmat_wy=None, tmat_wyx=None, active_set_wy=None, active_set_wyx=None):
+        """
+        Fix transition matrices to user defined ones. Overwrites existing
+        transition matrices. The ones that were not set here will be estimated with self.estimate.
+        :param tmat_wy: transition matrix for time series Y
+        :param tmat_wyx: transition matrix for combinatorial time series
+        :param active_set_wy: list of integers describing active set of WY time series. Ignored if tmat_wy=None.
+        If not supplied, full connectivity is assumed.
+        :param active_set_wyx: list of integers describing active set of WYX time series.
+        Ignored if tmat_wyx=None. If not supplied, full connectivity is assumed.
+        :return: self
+        """
+
+        if (tmat_wy is None) and (tmat_wyx is None):
+            return self
+
+        if self.tmat_ck_estimate and self.msmlag != 1:
+            print('WARNING: User-defined matrices will be matrix powered (tmat_ck_estimate=True).')
+
+        if tmat_wy is not None:
+            self.tmat_wy = np.linalg.matrix_power(tmat_wy, self.msmlag if self.tmat_ck_estimate else 1)
+            self._user_tmat_wy = True
+            if active_set_wy is not None:
+                self.active_set_wy = active_set_wy
+            else:
+                self.active_set_wy = list(range(self.tmat_wy.shape[0]))
+
+        if tmat_wyx is not None:
+            self.tmat_wyx = np.linalg.matrix_power(tmat_wyx, self.msmlag if self.tmat_ck_estimate else 1)
+            self._user_tmat_wyx = True
+
+            if active_set_wyx is not None:
+                self.active_set_wyx = active_set_wyx
+            else:
+                self.active_set_wyx = list(range(self.tmat_wyx.shape[0]))
+
+        # TODO: check if matrices have compatible dimensions
+        if (tmat_wy is not None) and (tmat_wyx is not None):
+            self._estimated = True
+
+        return self
 
     @property
     def pi_wy(self):
