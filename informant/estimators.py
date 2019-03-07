@@ -616,7 +616,10 @@ class MultiEstimator(object):
 
 
 class CausallyConditionedDI(MultiEstimator):
-    r"""Estimator for causally condited directed information as described by Quinn et al 2011"""
+    r"""
+    Estimator for causally condited directed information as described by Quinn et al 2011
+    CAUTION: NEEDS FURTHER TESTING
+    """
     def __init__(self, probability_estimator):
         super(CausallyConditionedDI, self).__init__(probability_estimator)
 

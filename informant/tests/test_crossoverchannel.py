@@ -166,25 +166,49 @@ class TestTriplet(unittest.TestCase):
         Y = X.copy()
         Y[_errbits] = 1 - Y[_errbits]
 
+        cls.X = X[2:]
+        cls.Y = Y[1:-1]
+
+        # proxy configuration: X -> Y -> Z
         _errbits = np.random.rand(N) < eps
         Z = Y.copy()
         Z[_errbits] = 1 - Z[_errbits]
+        cls.Z_proxy = Z[:-2]
 
-        cls.X = X[2:]
-        cls.Y = Y[1:-1]
-        cls.Z = Z[:-2]
+        # cascade configuration: X -> Y; X -> Z
+        _errbits = np.random.rand(N) < eps
+        Z = X.copy()
+        Z[_errbits] = 1 - Z[_errbits]
 
-    def _test_simple(self):
+        cls.Z_cascade = Z[1:-1]
+
+    def _test_proxy(self):
+        # TODO:
+        # This is a non-Markovian system. Seems to work qualitatively. Find out why.
+
 
         # test if direct link is detected with causally cond entropy > 0
         estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
-        estimator.estimate(self.X, self.Y, self.Z)
+        estimator.estimate(self.X, self.Y, self.Z_proxy)
 
         self.assertGreater(estimator.causally_conditioned_di, 0.)
 
         # test if indirect link is detected with causally cond entropy ~ 0.
         estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
-        estimator.estimate(self.X, self.Z, self.Y)
+        estimator.estimate(self.X, self.Z_proxy, self.Y)
+
+        self.assertAlmostEquals(estimator.causally_conditioned_di, 0.)
+
+    def _test_cascade(self):
+        # test if direct link is detected with causally cond entropy > 0
+        estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
+        estimator.estimate(self.X, self.Y, self.Z_cascade)
+
+        self.assertGreater(estimator.causally_conditioned_di, 0.)
+
+        # test if indirect link is detected with causally cond entropy ~ 0.
+        estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
+        estimator.estimate(self.Y, self.Z_cascade, self.X)
 
         self.assertAlmostEquals(estimator.causally_conditioned_di, 0.)
 
