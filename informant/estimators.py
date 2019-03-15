@@ -600,8 +600,9 @@ class MultiEstimator(object):
         assert np.unique(np.concatenate(Y)).min() == 0
         assert np.unique(np.concatenate(W)).min() == 0
 
-        assert self.Ny * self.Nw == tmat_wy.shape[0]
-        assert self.Ny * self.Nw * self.Nx == tmat_wyx.shape[0]
+        if not self.p_estimator._dangerous_ignore_warnings_flag:
+            assert self.Ny * self.Nw == tmat_wy.shape[0]
+            assert self.Ny * self.Nw * self.Nx == tmat_wyx.shape[0]
 
         x_lagged = lag_observations(X, msmlag)
         y_lagged = lag_observations(Y, msmlag)
@@ -676,30 +677,34 @@ class CausallyConditionedDI(MultiEstimator):
         for xi, xim1, yi, yim1, wi, wim1 in itertools.product(*[range(self.Nx), range(self.Nx),
                                                                 range(self.Ny), range(self.Ny),
                                                                 range(self.Nw), range(self.Nw)]):
+            if wi + self.Nw * yi + (self.Nw + self.Ny) * xi in self.p_estimator.active_set_wyx and \
+                    wim1 + self.Nw * yim1 + (self.Nw + self.Ny) * xim1 in self.p_estimator.active_set_wyx:
 
-            p_wi_yi_xi_given_wim1_yim1_xim1 = tmat_wyx[
-                full2active_wyx[wim1 + self.Nw * yim1 + (self.Nw + self.Ny) * xim1],
-                full2active_wyx[wi + self.Nw * yi + (self.Nw + self.Ny) * xi]]
+                p_wi_yi_xi_given_wim1_yim1_xim1 = tmat_wyx[
+                    full2active_wyx[wim1 + self.Nw * yim1 + (self.Nw + self.Ny) * xim1],
+                    full2active_wyx[wi + self.Nw * yi + (self.Nw + self.Ny) * xi]]
 
-            # skip if transition has not been observed in the data
-            if p_wi_yi_xi_given_wim1_yim1_xim1 == 0:
-                continue
+                # skip if transition has not been observed in the data
+                if p_wi_yi_xi_given_wim1_yim1_xim1 == 0:
+                    continue
 
 
-            p_yi_given_wim1_yim1_xim1 = np.sum(
-                [tmat_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (self.Nw + self.Ny) * xim1],
-                          full2active_wyx[wi + self.Nw * _y + (self.Nw + self.Ny) * xi]] for _y in range(self.Ny)])
+                p_yi_given_wim1_yim1_xim1 = np.sum(
+                    [tmat_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (self.Nw + self.Ny) * xim1],
+                              full2active_wyx[wi + self.Nw * _y + (self.Nw + self.Ny) * xi]]
+                     for _y in range(self.Ny)
+                     if wi + self.Nw * _y + (self.Nw + self.Ny) * xi in self.p_estimator.active_set_wyx])
 
-            p_yi_given_wi_wim1_yim1_xi_xim1 = p_wi_yi_xi_given_wim1_yim1_xim1 / p_yi_given_wim1_yim1_xim1
+                p_yi_given_wi_wim1_yim1_xi_xim1 = p_wi_yi_xi_given_wim1_yim1_xim1 / p_yi_given_wim1_yim1_xim1
 
-            # below: rate
-            #H_Y_cond_XW -= pi_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (
-            #            self.Nw + self.Ny) * xim1]] ** 2 * p_wi_yi_xi_given_wim1_yim1_xim1 * p_wi_xi_given_wim1_yim1_xim1 * np.log2(
-            #    p_yi_given_wi_wim1_yim1_xi_xim1)
+                # below: rate
+                #H_Y_cond_XW -= pi_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (
+                #            self.Nw + self.Ny) * xim1]] ** 2 * p_wi_yi_xi_given_wim1_yim1_xim1 * p_wi_xi_given_wim1_yim1_xim1 * np.log2(
+                #    p_yi_given_wi_wim1_yim1_xi_xim1)
 
-            H_Y_cond_XW -= pi_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (
-                    self.Nw + self.Ny) * xim1]] * p_wi_yi_xi_given_wim1_yim1_xim1 * np.log2(
-                p_yi_given_wi_wim1_yim1_xi_xim1)
+                H_Y_cond_XW -= pi_wyx[full2active_wyx[wim1 + self.Nw * yim1 + (
+                        self.Nw + self.Ny) * xim1]] * p_wi_yi_xi_given_wim1_yim1_xim1 * np.log2(
+                    p_yi_given_wi_wim1_yim1_xi_xim1)
 
 
         return H_Y_cond_W - H_Y_cond_XW

@@ -415,9 +415,8 @@ class NetMSMProbabilities:
         if not self._estimated:
             raise RuntimeError('Have to estimate before stationary distribution can be computed.')
 
-        if self._pi_wy is None:
-            self._pi_wy = msmtools.analysis.stationary_distribution(self.tmat_wy)
 
+        self._pi_wy = msmtools.analysis.stationary_distribution(self.tmat_wy)
         return self._pi_wy
 
     @property
@@ -425,7 +424,5 @@ class NetMSMProbabilities:
         if not self._estimated:
             raise RuntimeError('Have to estimate before stationary distribution can be computed.')
 
-        if self._pi_wyx is None:
-            self._pi_wyx = msmtools.analysis.stationary_distribution(self.tmat_wyx)
-
+        self._pi_wyx = msmtools.analysis.stationary_distribution(self.tmat_wyx)
         return self._pi_wyx
