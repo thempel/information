@@ -337,7 +337,7 @@ class NetMSMProbabilities:
                 self.tmat_wy = m.transition_matrix
                 self.active_set_wy = m.active_set
             if not self._user_tmat_wyx:
-                m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw + Ny) * _x for _w, _y, _x in zip(W, Y, X)],
+                m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw * Ny) * _x for _w, _y, _x in zip(W, Y, X)],
                                                      self.msmlag, reversible=self.reversible,
                                                      **kwargs)
                 self.tmat_wyx = m.transition_matrix
@@ -352,7 +352,7 @@ class NetMSMProbabilities:
                 self.tmat_wy = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
                 self.active_set_wy = m.active_set
             if not self._user_tmat_wyx:
-                m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw + Ny) * _x for _w, _y, _x in zip(W, Y, X)],
+                m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw * Ny) * _x for _w, _y, _x in zip(W, Y, X)],
                                                      1,
                                                      reversible=self.reversible,
                                                      **kwargs)
