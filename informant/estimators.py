@@ -627,7 +627,38 @@ class CausallyConditionedDI(MultiEstimator):
     def _nonstationary_estimator(self, W, X, Y):
         raise NotImplementedError
 
+    def _multivariate_mutual_info(self, x_lagged, w_lagged, y_lagged):
+
+        #pi_dep = np.zeros((self.Nx * self.Ny))
+        #pi_dep[self.p_estimator.active_set_xy] = self.p_estimator.pi_xy
+        p_xy = self.p_estimator.pi_xy
+        p_xw = self.p_estimator.pi_xw
+        p_yw = self.p_estimator.pi_wy # TODO: WRONG! take care of the order of variables.
+        pi_dep = self.p_estimator.pi_wyx # also wrong?
+
+        m = 0.
+        for n1, p1 in enumerate(self.p_estimator.pi_x):
+            for n2, p2 in enumerate(self.p_estimator.pi_y):
+                for n3, p3 in enumerate(self.p_estimator.pi_w):
+                    i_xyw = n1 + self.Nx * n2 + self.Nx * self.Ny * n3
+                    i_xy = n1 + self.Nx * n2 #TODO: check this out!
+                    i_xw = n1 + self.Nw * n3
+                    i_yw = n1 + self.Ny * n3
+                    if pi_dep[i_xyw] > 0:
+                        m += pi_dep[i_xyw] * np.log2(p_xy[i_xy] * p_xw[i_xw] * p_yw[i_yw] /
+                                                     (p1 * p2 * p3 * pi_dep[i_xyw]))
+        return m
+
     def _stationary_estimator(self, w_lagged, x_lagged, y_lagged):
+        # estimate normale DI here
+        from . import probability
+        estimator = JiaoI3(probability.MSMProbabilities(1, self.p_estimator.reversible))
+        estimator.estimate(w_lagged, y_lagged)
+
+        di_w2y = estimator.d
+        return self._multivariate_mutual_info() - di_w2y
+
+    def _stationary_estimator_legacy(self, w_lagged, x_lagged, y_lagged):
         """
         Implementation of causally conditioned directed information from [1] using Markov model
         probability estimates.

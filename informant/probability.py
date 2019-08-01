@@ -329,13 +329,33 @@ class NetMSMProbabilities:
         Ny = np.unique(np.concatenate(Y)).max() + 1
         Nx = np.unique(np.concatenate(X)).max() + 1
 
+        #TODO: transfer all other parameters, i.e. pre-computed transition matrices
+        #TODO: pairwise estimates might fail to converge to same pi_x, pi_y, pi_w!
+        pairwise_xy = MSMProbabilities(self.msmlag, self.reversible, self.tmat_ck_estimate)
+        pairwise_xy.estimate(X, Y, **kwargs)
+        self.tmat_xy = pairwise_xy.tmat_xy
+        self._pi_x = pairwise_xy.pi_x
+        self._pi_y = pairwise_xy.pi_y
+        self.active_set_xy = pairwise_xy.active_set_xy
+        del pairwise_xy
+
+        pairwise_xw = MSMProbabilities(self.msmlag, self.reversible, self.tmat_ck_estimate)
+        pairwise_xw.estimate(X, W, **kwargs)
+        self.tmat_xw = pairwise_xw.tmat_xy
+        self._pi_x = pairwise_xw.pi_x
+        self._pi_w = pairwise_xw.pi_y
+        self.active_set_xw = pairwise_xw.active_set_xy
+        del pairwise_xw
+
+        pairwise_wy = MSMProbabilities(self.msmlag, self.reversible, self.tmat_ck_estimate)
+        pairwise_wy.estimate(W, Y, **kwargs)
+        self.tmat_yw = pairwise_wy.tmat_xy
+        self._pi_w = pairwise_wy.pi_x
+        self._pi_y = pairwise_wy.pi_y
+        self.active_set_wy = pairwise_wy.active_set_xy
+        del pairwise_wy
+
         if not self.tmat_ck_estimate:
-            if not self._user_tmat_wy:
-                m = pyemma.msm.estimate_markov_model([_w + Nw * _y for _w, _y in zip(W, Y)],
-                                                     self.msmlag, reversible=self.reversible,
-                                                     **kwargs)
-                self.tmat_wy = m.transition_matrix
-                self.active_set_wy = m.active_set
             if not self._user_tmat_wyx:
                 m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw * Ny) * _x for _w, _y, _x in zip(W, Y, X)],
                                                      self.msmlag, reversible=self.reversible,
@@ -344,13 +364,6 @@ class NetMSMProbabilities:
                 self.active_set_wyx = m.active_set
 
         else:
-            if not self._user_tmat_wy:
-                m = pyemma.msm.estimate_markov_model([_w + Nw * _y for _w, _y in zip(W, Y)],
-                                                     1,
-                                                     reversible=self.reversible,
-                                                     **kwargs)
-                self.tmat_wy = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
-                self.active_set_wy = m.active_set
             if not self._user_tmat_wyx:
                 m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw * Ny) * _x for _w, _y, _x in zip(W, Y, X)],
                                                      1,
@@ -410,19 +423,34 @@ class NetMSMProbabilities:
 
         return self
 
-    @property
-    def pi_wy(self):
+    def check_is_estimated(self):
         if not self._estimated:
             raise RuntimeError('Have to estimate before stationary distribution can be computed.')
 
+    @property
+    def pi_wy(self):
+        self.check_is_estimated()
 
         self._pi_wy = msmtools.analysis.stationary_distribution(self.tmat_wy)
         return self._pi_wy
 
     @property
+    def pi_xy(self):
+        self.check_is_estimated()
+
+        self._pi_xy = msmtools.analysis.stationary_distribution(self.tmat_xy)
+        return self._pi_xy
+
+    @property
+    def pi_xw(self):
+        self.check_is_estimated()
+
+        self._pi_xw = msmtools.analysis.stationary_distribution(self.tmat_xw)
+        return self._pi_xw
+
+    @property
     def pi_wyx(self):
-        if not self._estimated:
-            raise RuntimeError('Have to estimate before stationary distribution can be computed.')
+        self.check_is_estimated()
 
         self._pi_wyx = msmtools.analysis.stationary_distribution(self.tmat_wyx)
         return self._pi_wyx
