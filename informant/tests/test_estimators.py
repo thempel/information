@@ -120,3 +120,10 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         self.assertAlmostEqual(est2.r, est1.r, places=1)
         self.assertAlmostEqual(est2.m, est1.m, places=1)
 
+    def test_causally_cond_simple(self):
+        est = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
+        est.estimate(self.A_nonbinary, self.B_nonbinary, self.A_binary)
+
+        self.assertAlmostEqual(est.causally_conditioned_di[0], 0, places=2)
+
+

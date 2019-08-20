@@ -593,16 +593,16 @@ class MultiEstimator(object):
         msmlag = self.p_estimator.msmlag
 
 
-        tmat_wy = self.p_estimator.tmat_wy
-        tmat_wyx = self.p_estimator.tmat_wyx
+        tmat_yw = self.p_estimator.tmat_yw
+        tmat_xyw = self.p_estimator.tmat_xyw
 
         assert np.unique(np.concatenate(X)).min() == 0
         assert np.unique(np.concatenate(Y)).min() == 0
         assert np.unique(np.concatenate(W)).min() == 0
 
         if not self.p_estimator._dangerous_ignore_warnings_flag:
-            assert self.Ny * self.Nw == tmat_wy.shape[0]
-            assert self.Ny * self.Nw * self.Nx == tmat_wyx.shape[0]
+            assert self.Ny * self.Nw == tmat_yw.shape[0]
+            assert self.Ny * self.Nw * self.Nx == tmat_xyw.shape[0]
 
         x_lagged = lag_observations(X, msmlag)
         y_lagged = lag_observations(Y, msmlag)
@@ -620,6 +620,7 @@ class CausallyConditionedDI(MultiEstimator):
     r"""
     Estimator for causally condited directed information as described by Quinn et al 2011
     CAUTION: NEEDS FURTHER TESTING
+    #TODO: class structure is messed up; methods and properties should be better separated
     """
     def __init__(self, probability_estimator):
         super(CausallyConditionedDI, self).__init__(probability_estimator)
@@ -627,23 +628,22 @@ class CausallyConditionedDI(MultiEstimator):
     def _nonstationary_estimator(self, W, X, Y):
         raise NotImplementedError
 
-    def _multivariate_mutual_info(self, x_lagged, w_lagged, y_lagged):
+    def _multivariate_mutual_info(self):
 
-        #pi_dep = np.zeros((self.Nx * self.Ny))
-        #pi_dep[self.p_estimator.active_set_xy] = self.p_estimator.pi_xy
         p_xy = self.p_estimator.pi_xy
         p_xw = self.p_estimator.pi_xw
-        p_yw = self.p_estimator.pi_wy # TODO: WRONG! take care of the order of variables.
-        pi_dep = self.p_estimator.pi_wyx # also wrong?
+        p_yw = self.p_estimator.pi_yw
+        pi_dep = self.p_estimator.pi_xyw
 
-        m = 0.
+        m = np.float32(0.)
         for n1, p1 in enumerate(self.p_estimator.pi_x):
             for n2, p2 in enumerate(self.p_estimator.pi_y):
                 for n3, p3 in enumerate(self.p_estimator.pi_w):
-                    i_xyw = n1 + self.Nx * n2 + self.Nx * self.Ny * n3
-                    i_xy = n1 + self.Nx * n2 #TODO: check this out!
-                    i_xw = n1 + self.Nw * n3
-                    i_yw = n1 + self.Ny * n3
+                    i_xyw = np.ravel_multi_index(np.array([n1, n2, n3]), (self.Nx, self.Ny, self.Nw))
+                    i_xy = n1 + self.Nx * n2
+                    i_xw = n1 + self.Nx * n3
+                    i_yw = n2 + self.Ny * n3
+
                     if pi_dep[i_xyw] > 0:
                         m += pi_dep[i_xyw] * np.log2(p_xy[i_xy] * p_xw[i_xw] * p_yw[i_yw] /
                                                      (p1 * p2 * p3 * pi_dep[i_xyw]))
@@ -651,12 +651,12 @@ class CausallyConditionedDI(MultiEstimator):
 
     def _stationary_estimator(self, w_lagged, x_lagged, y_lagged):
         # estimate normale DI here
+        # TODO: do not hard-code probability estimator
         from . import probability
-        estimator = JiaoI3(probability.MSMProbabilities(1, self.p_estimator.reversible))
-        estimator.estimate(w_lagged, y_lagged)
+        di_w2y = JiaoI3(probability.MSMProbabilities(1, self.p_estimator.reversible))
+        di_w2y.estimate(w_lagged, y_lagged)
 
-        di_w2y = estimator.d
-        return self._multivariate_mutual_info() - di_w2y
+        return self._multivariate_mutual_info() - di_w2y.d
 
     def _stationary_estimator_legacy(self, w_lagged, x_lagged, y_lagged):
         """

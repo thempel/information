@@ -182,7 +182,7 @@ class TestTriplet(unittest.TestCase):
 
         cls.Z_cascade = Z[1:-1]
 
-    def _test_proxy(self):
+    def test_proxy(self):
         # TODO:
         # This is a non-Markovian system. Seems to work qualitatively. Find out why.
 
@@ -191,13 +191,13 @@ class TestTriplet(unittest.TestCase):
         estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
         estimator.estimate(self.X, self.Y, self.Z_proxy)
 
-        self.assertGreater(estimator.causally_conditioned_di, 0.)
+        self.assertGreater(estimator.causally_conditioned_di[0], 0.)
 
         # test if indirect link is detected with causally cond entropy ~ 0.
         estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
         estimator.estimate(self.X, self.Z_proxy, self.Y)
 
-        self.assertAlmostEquals(estimator.causally_conditioned_di, 0.)
+        self.assertAlmostEquals(estimator.causally_conditioned_di[0], 0.)
 
     def _test_cascade(self):
         # test if direct link is detected with causally cond entropy > 0

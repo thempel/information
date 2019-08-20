@@ -299,14 +299,14 @@ class NetMSMProbabilities:
 
         self.is_stationary_estimate = True
 
-        self.tmat_wy, self.tmat_wyx = None, None
-        self.active_set_wy, self.active_set_wyx = None, None
-        self._pi_wy, self._pi_wyx = None, None
+        self.tmat_yw, self.tmat_xyw = None, None
+        self.active_set_yw, self.active_set_xyw = None, None
+        self._pi_yw, self._pi_xyw = None, None
 
         self.msmkwargs = None
 
         self._estimated = False
-        self._user_tmat_wy, self._user_tmat_wyx = False, False
+        self._user_tmat_wy, self._user_tmat_xyw = False, False
 
         self._dangerous_ignore_warnings_flag = False
 
@@ -334,48 +334,54 @@ class NetMSMProbabilities:
         pairwise_xy = MSMProbabilities(self.msmlag, self.reversible, self.tmat_ck_estimate)
         pairwise_xy.estimate(X, Y, **kwargs)
         self.tmat_xy = pairwise_xy.tmat_xy
-        self._pi_x = pairwise_xy.pi_x
-        self._pi_y = pairwise_xy.pi_y
+        self.pi_x = pairwise_xy.pi_x
+        self.pi_y = pairwise_xy.pi_y
+        self.pi_xy = pairwise_xy.pi_xy
         self.active_set_xy = pairwise_xy.active_set_xy
         del pairwise_xy
 
         pairwise_xw = MSMProbabilities(self.msmlag, self.reversible, self.tmat_ck_estimate)
         pairwise_xw.estimate(X, W, **kwargs)
         self.tmat_xw = pairwise_xw.tmat_xy
-        self._pi_x = pairwise_xw.pi_x
-        self._pi_w = pairwise_xw.pi_y
+        self.pi_x = pairwise_xw.pi_x
+        self.pi_w = pairwise_xw.pi_y
+        self.pi_xw = pairwise_xw.pi_xy
         self.active_set_xw = pairwise_xw.active_set_xy
         del pairwise_xw
 
-        pairwise_wy = MSMProbabilities(self.msmlag, self.reversible, self.tmat_ck_estimate)
-        pairwise_wy.estimate(W, Y, **kwargs)
-        self.tmat_yw = pairwise_wy.tmat_xy
-        self._pi_w = pairwise_wy.pi_x
-        self._pi_y = pairwise_wy.pi_y
-        self.active_set_wy = pairwise_wy.active_set_xy
-        del pairwise_wy
+        pairwise_yw = MSMProbabilities(self.msmlag, self.reversible, self.tmat_ck_estimate)
+        pairwise_yw.estimate(Y, W, **kwargs)
+        self.tmat_yw = pairwise_yw.tmat_xy
+        self.pi_y = pairwise_yw.pi_x
+        self.pi_w = pairwise_yw.pi_y
+        self.pi_yw = pairwise_yw.pi_xy
+        self.active_set_yw = pairwise_yw.active_set_xy
+        del pairwise_yw
+
+        dtraj_comb = [np.ravel_multi_index(np.vstack([_x, _y, _w]), (Nx, Ny, Nw)) for _x, _y, _w in zip(X, Y, W)]
 
         if not self.tmat_ck_estimate:
-            if not self._user_tmat_wyx:
-                m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw * Ny) * _x for _w, _y, _x in zip(W, Y, X)],
+            if not self._user_tmat_xyw:
+
+                m = pyemma.msm.estimate_markov_model(dtraj_comb,
                                                      self.msmlag, reversible=self.reversible,
                                                      **kwargs)
-                self.tmat_wyx = m.transition_matrix
-                self.active_set_wyx = m.active_set
+                self.tmat_xyw = m.transition_matrix
+                self.active_set_xyw = m.active_set
 
         else:
-            if not self._user_tmat_wyx:
-                m = pyemma.msm.estimate_markov_model([_w + Nw * _y + (Nw * Ny) * _x for _w, _y, _x in zip(W, Y, X)],
+            if not self._user_tmat_xyw:
+                m = pyemma.msm.estimate_markov_model(dtraj_comb,
                                                      1,
                                                      reversible=self.reversible,
                                                      **kwargs)
-                self.tmat_wyx = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
-                self.active_set_wyx = m.active_set
+                self.tmat_xyw = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
+                self.active_set_xyw = m.active_set
 
         if not self._dangerous_ignore_warnings_flag:
-            if not Nw * Ny == self.tmat_wy.shape[0]:
+            if not Nw * Ny == self.tmat_yw.shape[0]:
                     raise NotImplementedError('WY-model is not showing all combinatorial states.')
-            elif not Nw * Ny * Nx == self.tmat_wyx.shape[0]:
+            elif not Nw * Ny * Nx == self.tmat_xyw.shape[0]:
                     raise NotImplementedError('WYX-model is not showing all combinatorial states.')
 
         self._estimated = True
@@ -393,6 +399,7 @@ class NetMSMProbabilities:
         Ignored if tmat_wyx=None. If not supplied, full connectivity is assumed.
         :return: self
         """
+        raise NotImplementedError
 
         if (tmat_wy is None) and (tmat_wyx is None):
             return self
@@ -428,29 +435,8 @@ class NetMSMProbabilities:
             raise RuntimeError('Have to estimate before stationary distribution can be computed.')
 
     @property
-    def pi_wy(self):
+    def pi_xyw(self):
         self.check_is_estimated()
 
-        self._pi_wy = msmtools.analysis.stationary_distribution(self.tmat_wy)
-        return self._pi_wy
-
-    @property
-    def pi_xy(self):
-        self.check_is_estimated()
-
-        self._pi_xy = msmtools.analysis.stationary_distribution(self.tmat_xy)
-        return self._pi_xy
-
-    @property
-    def pi_xw(self):
-        self.check_is_estimated()
-
-        self._pi_xw = msmtools.analysis.stationary_distribution(self.tmat_xw)
-        return self._pi_xw
-
-    @property
-    def pi_wyx(self):
-        self.check_is_estimated()
-
-        self._pi_wyx = msmtools.analysis.stationary_distribution(self.tmat_wyx)
-        return self._pi_wyx
+        self._pi_xyw = msmtools.analysis.stationary_distribution(self.tmat_xyw)
+        return self._pi_xyw
