@@ -517,8 +517,6 @@ class MultiEstimator(object):
 
         :param probability_estimator: informant.ProbabilityEstimator class
         """
-        from informant import NetMSMProbabilities
-        assert isinstance(probability_estimator, NetMSMProbabilities)
         self.p_estimator = probability_estimator
 
         self.causally_conditioned_di = None

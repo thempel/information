@@ -124,6 +124,6 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         est = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
         est.estimate(self.A_nonbinary, self.B_nonbinary, self.A_binary)
 
-        self.assertAlmostEqual(est.causally_conditioned_di[0], 0, places=2)
+        self.assertAlmostEqual(est.causally_conditioned_di[0], 0, places=1)
 
 
