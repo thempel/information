@@ -197,9 +197,9 @@ class TestTriplet(unittest.TestCase):
         estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
         estimator.estimate(self.X, self.Z_proxy, self.Y)
 
-        self.assertAlmostEquals(estimator.causally_conditioned_di[0], 0.)
+        self.assertAlmostEqual(estimator.causally_conditioned_di[0], 0., places=2)
 
-    def _test_cascade(self):
+    def test_cascade(self):
         # test if direct link is detected with causally cond entropy > 0
         estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
         estimator.estimate(self.X, self.Y, self.Z_cascade)
@@ -210,7 +210,7 @@ class TestTriplet(unittest.TestCase):
         estimator = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
         estimator.estimate(self.Y, self.Z_cascade, self.X)
 
-        self.assertAlmostEquals(estimator.causally_conditioned_di, 0.)
+        self.assertAlmostEqual(estimator.causally_conditioned_di[0], 0., places=2)
 
 
 if __name__ == '__main__':

@@ -41,14 +41,14 @@ class TestLowlevel(unittest.TestCase):
                 self.pi_w = [.9, .1]
 
                 self.pi_xy = self.pi_xw = self.pi_yw = np.ones(4)/4
-                self.pi_xyw = np.ones(16)/16
+                self.pi_xyw = np.ones(8)/8
         prob = P()
         est = informant.CausallyConditionedDI(prob)
         est.Nx = est.Ny = est.Nw = 2  # manually set properties
         m = est._multivariate_mutual_info()
 
         def summand(p1, p2, p3):
-            return 1/16 * np.log2(.25**3 / (p1 * p2 * p3 * 1/16))
+            return 1/8 * np.log2(.25**3 / (p1 * p2 * p3 * 1/8))
 
         m_test = sum([summand(p1, p2, p3) for p1, p2, p3 in
                       itertools.product(prob.pi_x, prob.pi_y, prob.pi_w)])

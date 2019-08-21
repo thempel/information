@@ -648,13 +648,27 @@ class CausallyConditionedDI(MultiEstimator):
         return m
 
     def _stationary_estimator(self, w_lagged, x_lagged, y_lagged):
-        # estimate normale DI here
+        """
+        Implementation of causally conditioned directed information from [1] using Markov model
+        probability estimates.
+
+        [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
+        :param w_lagged: List of binary trajectories conditioned upon which DI is conditioned. time step msmlag.
+        :param x_lagged: List of binary trajectories 1 with time step msmlag.
+        :param y_lagged: List of binary trajectories 2 with time step msmlag.
+        :return: causally conditioned directed information
+        """
         # TODO: do not hard-code probability estimator
+        # TODO: full2active missing; also seems unreasonable here, no?
         from . import probability
         di_w2y = JiaoI3(probability.MSMProbabilities(1, self.p_estimator.reversible))
         di_w2y.estimate(w_lagged, y_lagged)
 
-        return self._multivariate_mutual_info() - di_w2y.d
+        xw_lagged = [_x + self.Nx * _w for _x, _w in zip(x_lagged, w_lagged)]
+        di_xw2y = JiaoI3(probability.MSMProbabilities(1, self.p_estimator.reversible))
+        di_xw2y.estimate(xw_lagged, y_lagged)
+
+        return di_xw2y.d - di_w2y.d
 
     def _stationary_estimator_legacy(self, w_lagged, x_lagged, y_lagged):
         """
