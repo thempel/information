@@ -2,7 +2,7 @@ import itertools
 import numpy as np
 from bhmm import lag_observations
 from informant import utils
-
+from copy import deepcopy
 
 class Estimator(object):
     """ Base class for directed information estimators
@@ -507,7 +507,6 @@ class MutualInfoStationaryDistribution(Estimator):
         return 0., 0., m
 
 
-
 class MultiEstimator(object):
     """ Base class for directed information estimators with multiple processes
 
@@ -556,9 +555,6 @@ class MultiEstimator(object):
         for n_w, W in enumerate(W_):
             self.Nw = np.unique(np.concatenate(W)).max() + 1
 
-            # new estimate for each W.
-            self.p_estimator.estimate(W, A, B)
-
             if self.p_estimator.is_stationary_estimate:
                 if not traj_eq_reweighting:
                     _causally_conditioned_di = self.stationary_estimate(W, A, B)
@@ -590,17 +586,9 @@ class MultiEstimator(object):
         """
         msmlag = self.p_estimator.msmlag
 
-
-        tmat_yw = self.p_estimator.tmat_yw
-        tmat_xyw = self.p_estimator.tmat_xyw
-
         assert np.unique(np.concatenate(X)).min() == 0
         assert np.unique(np.concatenate(Y)).min() == 0
         assert np.unique(np.concatenate(W)).min() == 0
-
-        if not self.p_estimator._dangerous_ignore_warnings_flag:
-            assert self.Ny * self.Nw == tmat_yw.shape[0]
-            assert self.Ny * self.Nw * self.Nx == tmat_xyw.shape[0]
 
         x_lagged = lag_observations(X, msmlag)
         y_lagged = lag_observations(Y, msmlag)
@@ -614,14 +602,13 @@ class MultiEstimator(object):
         raise NotImplementedError('Not implemented.')
 
 
-class CausallyConditionedDI(MultiEstimator):
+class CausallyConditionedDIJiaoI3(MultiEstimator):
     r"""
     Estimator for causally condited directed information as described by Quinn et al 2011
-    CAUTION: NEEDS FURTHER TESTING
-    #TODO: class structure is messed up; methods and properties should be better separated
+    with I3 estimator by Jiao et al
     """
     def __init__(self, probability_estimator):
-        super(CausallyConditionedDI, self).__init__(probability_estimator)
+        super(CausallyConditionedDIJiaoI3, self).__init__(probability_estimator)
 
     def _nonstationary_estimator(self, W, X, Y):
         raise NotImplementedError
@@ -630,22 +617,66 @@ class CausallyConditionedDI(MultiEstimator):
     def _stationary_estimator(self, w_lagged, x_lagged, y_lagged):
         """
         Implementation of causally conditioned directed information from [1] using Markov model
-        probability estimates.
+        probability estimates and DI estimator I3 from [2].
 
         [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
+        [2] J. Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
+        Estimation of Directed Information', http://arxiv.org/abs/1201.2334.
+
         :param w_lagged: List of binary trajectories conditioned upon which DI is conditioned. time step msmlag.
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
         :return: causally conditioned directed information
         """
-        # TODO: do not hard-code probability estimator
-        # TODO: full2active missing; also seems unreasonable here, no?
-        from . import probability
-        di_w2y = JiaoI3(probability.MSMProbabilities(1, self.p_estimator.reversible))
+        p = deepcopy(self.p_estimator)
+        p.msmlag = 1
+        di_w2y = JiaoI3(p)
         di_w2y.estimate(w_lagged, y_lagged)
 
+        p = deepcopy(self.p_estimator)
+        p.msmlag = 1
         xw_lagged = [_x + self.Nx * _w for _x, _w in zip(x_lagged, w_lagged)]
-        di_xw2y = JiaoI3(probability.MSMProbabilities(1, self.p_estimator.reversible))
+        di_xw2y = JiaoI3(p)
+        di_xw2y.estimate(xw_lagged, y_lagged)
+
+        return di_xw2y.d - di_w2y.d
+
+
+class CausallyConditionedDIJiaoI4(MultiEstimator):
+    r"""
+    Estimator for causally condited directed information as described by Quinn et al 2011
+    with I4 estimator by Jiao et al
+    """
+    def __init__(self, probability_estimator):
+        super(CausallyConditionedDIJiaoI4, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, W, X, Y):
+        raise NotImplementedError
+
+
+    def _stationary_estimator(self, w_lagged, x_lagged, y_lagged):
+        """
+        Implementation of causally conditioned directed information from [1] using Markov model
+        probability estimates and DI estimator I4 from [2].
+
+        [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
+        [2] J. Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
+        Estimation of Directed Information', http://arxiv.org/abs/1201.2334.
+
+        :param w_lagged: List of binary trajectories conditioned upon which DI is conditioned. time step msmlag.
+        :param x_lagged: List of binary trajectories 1 with time step msmlag.
+        :param y_lagged: List of binary trajectories 2 with time step msmlag.
+        :return: causally conditioned directed information
+        """
+        p = deepcopy(self.p_estimator)
+        p.msmlag = 1
+        di_w2y = JiaoI4(p)
+        di_w2y.estimate(w_lagged, y_lagged)
+
+        p = deepcopy(self.p_estimator)
+        p.msmlag = 1
+        xw_lagged = [_x + self.Nx * _w for _x, _w in zip(x_lagged, w_lagged)]
+        di_xw2y = JiaoI4(p)
         di_xw2y.estimate(xw_lagged, y_lagged)
 
         return di_xw2y.d - di_w2y.d
