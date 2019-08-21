@@ -76,3 +76,42 @@ def reweight_trajectories(A, B, p, size=None):
         B_reweighted.append(B[choice])
 
     return A_reweighted, B_reweighted
+
+
+def multivariate_mutual_info(p_x, p_y, p_w, p_xy, p_xw, p_yw, p_xyw):
+    """
+    Compute multivariate mutual information I(X, Y, W) of three random
+    processes given their (joint) probability distributions.
+
+    Indices for joint probabilities are sorted as
+    p(x_i, y_j) = p[i + Nx * j]
+    and for p_xyw, np.unravel_index is used.
+
+    :param p_x: np.array, unconditional probabilities of x
+    :param p_y: np.array, unconditional probabilities of y
+    :param p_w: np.array, unconditional probabilities of w
+    :param p_xy: np.array, unconditional joint probabilities of x, y
+    :param p_xw: np.array, unconditional joint probabilities of x, w
+    :param p_yw: np.array, unconditional joint probabilities of y, w
+    :param p_xyw: np.array, unconditional joint probabilities of x, y, w
+    :return:
+    """
+
+
+    Nx = len(p_x)
+    Ny = len(p_y)
+    Nw = len(p_w)
+
+    m = np.float32(0.)
+    for n1, p1 in enumerate(p_x):
+        for n2, p2 in enumerate(p_y):
+            for n3, p3 in enumerate(p_w):
+                i_xyw = np.ravel_multi_index(np.array([n1, n2, n3]), (Nx, Ny, Nw))
+                i_xy = n1 + Nx * n2
+                i_xw = n1 + Nx * n3
+                i_yw = n2 + Ny * n3
+
+                if p_xyw[i_xyw] > 0:
+                    m += p_xyw[i_xyw] * np.log2(p_xy[i_xy] * p_xw[i_xw] * p_yw[i_yw] /
+                                                (p1 * p2 * p3 * p_xyw[i_xyw]))
+    return m
