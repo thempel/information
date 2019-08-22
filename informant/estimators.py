@@ -580,7 +580,7 @@ class MultiEstimator(object):
         """
         Directed informant estimation on discrete trajectories with Markov model
         probability estimates.
-
+        :param W: Conditinal time-series
         :param X: Time-series 1
         :param Y: Time-series 2
         :return: di, rdi, mi
