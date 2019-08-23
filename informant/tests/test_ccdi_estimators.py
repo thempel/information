@@ -19,6 +19,7 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
     params = {
         '_test_simple': default_test_grid,
         '_test_simple_multiconditionals': default_test_grid,
+        '_test_simple_multiprocessing': default_test_grid,
         '_test_simple_raises_disconnectedXW': default_test_grid,
         '_test_proxy': default_test_grid,
         '_test_cascade': default_test_grid
@@ -68,6 +69,17 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         est.estimate(self.A_binary, self.B_binary, [self.B_nonbinary, self.A_nonbinary])
 
         self.assertAlmostEqual(est.causally_conditioned_di[0], 0, places=0)
+
+    def _test_simple_multiprocessing(self, di_est, p_est):
+        est = di_est(p_est())
+        est.estimate(self.A_binary, self.B_binary, [self.B_nonbinary, self.A_nonbinary], n_jobs=2)
+        ccdi_multiproc = est.causally_conditioned_di
+
+        est = di_est(p_est())
+        est.estimate(self.A_binary, self.B_binary, [self.B_nonbinary, self.A_nonbinary], n_jobs=1)
+        ccdi_singleproc = est.causally_conditioned_di
+
+        np.testing.assert_array_equal(ccdi_multiproc, ccdi_singleproc)
 
     def _test_simple_raises_disconnectedXW(self, di_est, p_est):
         est = di_est(p_est())

@@ -521,7 +521,7 @@ class MultiEstimator(object):
         self.causally_conditioned_di = None
         self.Nx, self.Ny, self.Nw = 0, 0, 0
 
-    def estimate(self, A, B, W_, traj_eq_reweighting=False):
+    def estimate(self, A, B, W_, traj_eq_reweighting=False, n_jobs=1):
         """
         Convenience function for causally conditioned directed information
         :param A: np.array or list of np.arrays of dtype int. time series A
@@ -552,6 +552,30 @@ class MultiEstimator(object):
         self.Ny = np.unique(np.concatenate(B)).max() + 1
 
         self.causally_conditioned_di = np.zeros(len(W_))
+
+
+        if self.p_estimator.is_stationary_estimate:
+            if not traj_eq_reweighting:
+                if n_jobs == 1:
+                    for n_w, W in enumerate(W_):
+                        self.Nw = np.unique(np.concatenate(W)).max() + 1
+                        self.causally_conditioned_di[n_w] = self.stationary_estimate(W, A, B)
+                else:
+                    from pathos.multiprocessing import Pool
+                    from contextlib import closing
+
+                    pool = Pool(processes=n_jobs)
+                    args = [(W, A, B) for W in W_]
+
+                    with closing(pool):
+                        res_async = [pool.apply_async(self.stationary_estimate, a) for a in args]
+                        self.causally_conditioned_di[:] = [x.get() for x in res_async]
+            else:
+                raise NotImplementedError('Equilibrium traj reweighting not yet implemented.')
+        else:
+            for n_w, W in enumerate(W_):
+                self.causally_conditioned_di[n_w] = self.nonstationary_estimate(A, B)
+
         for n_w, W in enumerate(W_):
             self.Nw = np.unique(np.concatenate(W)).max() + 1
 
@@ -595,10 +619,12 @@ class MultiEstimator(object):
         y_lagged = lag_observations(Y, msmlag)
         w_lagged = lag_observations(W, msmlag)
 
+        Nw = np.unique(np.concatenate(W)).max() + 1
+
         prob_estimator_wy = deepcopy(self.p_estimator)
         prob_estimator_wy.msmlag = 1
         prob_estimator_wy.estimate(w_lagged, y_lagged)
-        if not prob_estimator_wy.tmat_x.shape[0] == self.Nw:
+        if not prob_estimator_wy.tmat_x.shape[0] == Nw:
             return np.NaN
 
         prob_estimator_xwy = deepcopy(self.p_estimator)
@@ -606,7 +632,7 @@ class MultiEstimator(object):
         xw_lagged = [_x + self.Nx * _w for _x, _w in zip(x_lagged, w_lagged)]
 
         prob_estimator_xwy.estimate(xw_lagged, y_lagged)
-        if not prob_estimator_xwy.tmat_x.shape[0] == self.Nx * self.Nw:
+        if not prob_estimator_xwy.tmat_x.shape[0] == self.Nx * Nw:
             return np.NaN
 
         return self._stationary_estimator(w_lagged, xw_lagged, y_lagged,
