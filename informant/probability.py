@@ -293,6 +293,7 @@ class NetMSMProbabilities:
         :param reversible: reversible estimate (bool)
         :param tmat_ck_estimate: Estimate higher lag time transition matrices from CK-equation
         """
+        print('DEPRECATION WARNING: This method has no internal use for this package and will be deleted soon.')
         self.msmlag = msmlag
         self.reversible = reversible
         self.tmat_ck_estimate = tmat_ck_estimate

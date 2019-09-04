@@ -273,18 +273,6 @@ class JiaoI4(Estimator):
         return di, rdi, mi
 
 
-class JiaoI4Ensemble(Estimator):
-    r"""Estimator for Jiao et al I4 for MSM probabilities in ensemble average formulation"""
-    def __init__(self, probability_estimator):
-        super(JiaoI4Ensemble, self).__init__(probability_estimator)
-
-    def _nonstationary_estimator(self, a, b):
-        raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
-
-    def _stationary_estimator(self, x_lagged, y_lagged):
-        raise DeprecationWarning('Use JiaoI4 instead!')
-
-
 class JiaoI3(Estimator):
     r"""Estimator for Jiao et al I3 with CTW and MSM probabilities"""
     def __init__(self, probability_estimator):
@@ -422,18 +410,6 @@ class JiaoI3(Estimator):
                  np.log2(p_xi_yi_given_xim1_yim1/(tmat_y[yim1, yi] * tmat_x[xim1, xi]))
 
         return di, rdi, mi
-
-
-class JiaoI3Ensemble(Estimator):
-    r"""Estimator for Jiao et al I3 for MSM probabilities in ensemble average formulation"""
-    def __init__(self, probability_estimator):
-        super(JiaoI3Ensemble, self).__init__(probability_estimator)
-
-    def _nonstationary_estimator(self, a, b):
-        raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
-
-    def _stationary_estimator(self, x_lagged, y_lagged):
-        raise DeprecationWarning('Use JiaoI3 instead!')
 
 
 class TransferEntropy(Estimator):
