@@ -58,6 +58,36 @@ that use the estimators described above. It implemented as
 `I(X ->Y || W ) = I(X, W -> Y) - I(W -> Y)` which follows from the definitions
 in [5].
 
+### Application
+#### Installation (non-invasive)
+After cloning this repo and use the following lines in your
+jupyter notebook at import. This is completely non-invasive. 
+Dependencies should all be satisfied for pyemma users.
+```python
+import sys
+sys.path.append('/path/to/informant/')
+import informant
+``` 
+#### Convencience functions
+It is not planned to have a full convenience API. However, 
+the network of pairwise transfer entropy estimates in a protein
+can be computed and plotted as follows:
+
+```python
+dtrajs = informant.md.discretize_residue_backbone_sidechains(
+         topology_file,
+         trajectory_files,
+         tica_lag
+         )
+te = informant.md.compute_inter_residue_transfer_entropy(
+     dtrajs_dictionary,
+     msmlag
+     )
+informant.plots.plot_directed_links(ref_trajectory, te)
+```
+Depending on the protein size and the amount of data, this 
+can take a while. 
+
 ### Literature
 [1] J. Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
     Estimation of Directed Information',

@@ -2,3 +2,5 @@
 from . probability import  *
 from . estimators import *
 from . import utils
+from . import md
+from . import plots
