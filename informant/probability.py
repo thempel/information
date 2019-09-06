@@ -1,7 +1,7 @@
 import numpy as np
-import pyemma
 import msmtools
 from informant import utils
+
 
 class MSMProbabilities:
     """
@@ -49,33 +49,47 @@ class MSMProbabilities:
 
         if not self.tmat_ck_estimate:
             if not self._user_tmat_x:
-                self.tmat_x = pyemma.msm.estimate_markov_model(X, self.msmlag, reversible=self.reversible,
-                                                               **kwargs).transition_matrix
+                c_lcc = msmtools.estimation.largest_connected_submatrix(
+                    msmtools.estimation.count_matrix(X, self.msmlag, sparse_return=False)
+                )
+                self.tmat_x = msmtools.estimation.transition_matrix(c_lcc, reversible=self.reversible, **kwargs)
+
             if not self._user_tmat_y:
-                self.tmat_y = pyemma.msm.estimate_markov_model(Y, self.msmlag, reversible=self.reversible,
-                                                               **kwargs).transition_matrix
+                c_lcc = msmtools.estimation.largest_connected_submatrix(
+                    msmtools.estimation.count_matrix(Y, self.msmlag, sparse_return=False)
+                )
+                self.tmat_y = msmtools.estimation.transition_matrix(c_lcc, reversible=self.reversible, **kwargs)
             if not self._user_tmat_xy:
-                m = pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
-                                                     self.msmlag, reversible=self.reversible,
-                                                     **kwargs)
-                self.tmat_xy = m.transition_matrix
-                self.active_set_xy = m.active_set
+                c = msmtools.estimation.count_matrix([_x + Nx * _y for _x, _y in zip(X, Y)],
+                                                     self.msmlag, sparse_return=False)
+                self.tmat_xy = msmtools.estimation.transition_matrix(
+                    msmtools.estimation.largest_connected_submatrix(c), reversible=self.reversible, **kwargs
+                )
+                self.active_set_xy = msmtools.estimation.largest_connected_set(c)
         else:
             if not self._user_tmat_x:
+                c_lcc = msmtools.estimation.largest_connected_submatrix(
+                    msmtools.estimation.count_matrix(X, 1, sparse_return=False)
+                )
                 self.tmat_x = np.linalg.matrix_power(
-                    pyemma.msm.estimate_markov_model(X, 1, reversible=self.reversible,
-                                                     **kwargs).transition_matrix, self.msmlag)
+                    msmtools.estimation.transition_matrix(c_lcc, reversible=self.reversible, **kwargs), self.msmlag
+                )
             if not self._user_tmat_y:
+                c_lcc = msmtools.estimation.largest_connected_submatrix(
+                    msmtools.estimation.count_matrix(Y, 1, sparse_return=False)
+                )
                 self.tmat_y = np.linalg.matrix_power(
-                    pyemma.msm.estimate_markov_model(Y, 1, reversible=self.reversible,
-                                                     **kwargs).transition_matrix, self.msmlag)
+                    msmtools.estimation.transition_matrix(c_lcc, reversible=self.reversible, **kwargs), self.msmlag
+                )
             if not self._user_tmat_xy:
-                m = pyemma.msm.estimate_markov_model([_x + Nx * _y for _x, _y in zip(X, Y)],
-                                                     1,
-                                                     reversible=self.reversible,
-                                                     **kwargs)
-                self.tmat_xy = np.linalg.matrix_power(m.transition_matrix, self.msmlag)
-                self.active_set_xy = m.active_set
+                c = msmtools.estimation.count_matrix([_x + Nx * _y for _x, _y in zip(X, Y)],
+                                                     1, sparse_return=False)
+                self.tmat_xy = np.linalg.matrix_power(
+                    msmtools.estimation.transition_matrix(msmtools.estimation.largest_connected_submatrix(c),
+                                                          reversible=self.reversible, **kwargs),
+                    self.msmlag
+                )
+                self.active_set_xy = msmtools.estimation.largest_connected_set(c)
 
         if not self.tmat_x.shape[0] * self.tmat_y.shape[0] == self.tmat_xy.shape[0]:
             print(self.tmat_x.shape, self.tmat_y.shape, self.tmat_xy.shape)
@@ -360,6 +374,7 @@ class NetMSMProbabilities:
         del pairwise_yw
 
         dtraj_comb = [np.ravel_multi_index(np.vstack([_x, _y, _w]), (Nx, Ny, Nw)) for _x, _y, _w in zip(X, Y, W)]
+        import pyemma  # do it here because class is deprecated and pyemma not used above.
 
         if not self.tmat_ck_estimate:
             if not self._user_tmat_xyw:
