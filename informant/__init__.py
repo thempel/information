@@ -4,3 +4,4 @@ from . estimators import *
 from . import utils
 from . import md
 from . import plots
+from . import generators
