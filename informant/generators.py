@@ -106,7 +106,6 @@ def gen_ising_traj(nspins, nsteps, alpha=.1, gamma=0.95, driver=0, show_progress
     :param alpha: float; basal spin flip-rate, defines time-scale (=0.1)
     :param gamma: float; gamma is equal to tanh(\beta 2J) where J is the spin-spin coupling constant
     in a corresponding Ising model, and \beta is the inverse temperature.
-    :param ratematrix: bool; return rate matrix
     :param tau: float; time discretization for transition matrix
     :param driver: int; identity of driving spin
     :param alpha_driver: float, alpha parameter (basal flipping rate) of driving spin
