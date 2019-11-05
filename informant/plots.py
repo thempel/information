@@ -126,7 +126,7 @@ def plot_directed_links(ref_trajectory,
                 ax.annotate(xy=_pos + n * np.array([2 * offset + wspace, 0]),
                             s=str(_res.resSeq), fontsize=10, alpha=.8, ha='center')
     ax.set_ylim(-1.1, 1.1)
-    ax.set_xlim(-1.1 * offset, (n + 1) * 1.1 * (2 * offset + wspace))
+    ax.set_xlim(-1.1 * offset, n * 1.25 * (2 * offset + wspace))
     ax.axis('off')
 
     return ax

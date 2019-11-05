@@ -688,3 +688,37 @@ class CausallyConditionedDIJiaoI4(MultiEstimator):
         di_xw2y.estimate(xw_lagged, y_lagged)
 
         return di_xw2y.d - di_w2y.d
+
+class CausallyConditionedTE(MultiEstimator):
+    r"""
+    Estimator for causally condited transfer entropy analogously to Quinn et al 2011
+    """
+    def __init__(self, probability_estimator):
+        super(CausallyConditionedTE, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, W, X, Y):
+        raise NotImplementedError
+
+    def _stationary_estimator(self, w_lagged, xw_lagged, y_lagged,
+                              probability_estimator_wy, probability_estimator_xwy):
+        """
+        Implementation of causally conditioned transfer entropy analogously to [1]
+        using Markov model probability estimates and TE estimator from [2] as a
+        replacement to DI.
+
+        [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
+        [2] Schreiber, PRL, 2000
+
+        :param w_lagged: List of binary trajectories conditioned upon which DI is conditioned. time step msmlag.
+        :param x_lagged: List of binary trajectories 1 with time step msmlag.
+        :param y_lagged: List of binary trajectories 2 with time step msmlag.
+        :return: causally conditioned directed information
+        """
+
+        di_w2y = TransferEntropy(probability_estimator_wy)
+        di_w2y.estimate(w_lagged, y_lagged)
+
+        di_xw2y = TransferEntropy(probability_estimator_xwy)
+        di_xw2y.estimate(xw_lagged, y_lagged)
+
+        return di_xw2y.d - di_w2y.d
