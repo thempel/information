@@ -1,6 +1,5 @@
 import itertools
 import numpy as np
-from bhmm import lag_observations
 from informant import utils
 from copy import deepcopy
 
@@ -115,8 +114,8 @@ class Estimator(object):
         assert self.Nx - 1 == tmat_x.shape[0] - 1 and np.unique(np.concatenate(X)).min() == 0
         assert self.Ny - 1 == tmat_y.shape[0] - 1 and np.unique(np.concatenate(Y)).min() == 0
 
-        x_lagged = lag_observations(X, msmlag)
-        y_lagged = lag_observations(Y, msmlag)
+        x_lagged = utils.lag_observations(X, msmlag)
+        y_lagged = utils.lag_observations(Y, msmlag)
 
         di, rev_di, mi = self._stationary_estimator(x_lagged, y_lagged)
 
@@ -591,9 +590,9 @@ class MultiEstimator(object):
         assert np.unique(np.concatenate(Y)).min() == 0
         assert np.unique(np.concatenate(W)).min() == 0
 
-        x_lagged = lag_observations(X, msmlag)
-        y_lagged = lag_observations(Y, msmlag)
-        w_lagged = lag_observations(W, msmlag)
+        x_lagged = utils.lag_observations(X, msmlag)
+        y_lagged = utils.lag_observations(Y, msmlag)
+        w_lagged = utils.lag_observations(W, msmlag)
 
         Nw = np.unique(np.concatenate(W)).max() + 1
 
