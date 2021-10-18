@@ -63,9 +63,8 @@ class Estimator(object):
         d_forward, r_forward, m_forward = self.d, self.r, self.m
 
         # for backward direction, initialize new probability / information estimators
-        # TODO: this is extremely ugly code and probably not very robust.
-        p_estimator_args = [self.p_estimator.__getattribute__(a) for a in self.p_estimator.__init__.__code__.co_varnames[1:]]
-        reverse_p_estimator = self.p_estimator.__class__(*p_estimator_args)
+        from copy import deepcopy
+        reverse_p_estimator = deepcopy(self.p_estimator)
 
         if self.p_estimator.is_stationary_estimate:
             if self.p_estimator._user_tmat_x:
@@ -273,18 +272,6 @@ class JiaoI4(Estimator):
         return di, rdi, mi
 
 
-class JiaoI4Ensemble(Estimator):
-    r"""Estimator for Jiao et al I4 for MSM probabilities in ensemble average formulation"""
-    def __init__(self, probability_estimator):
-        super(JiaoI4Ensemble, self).__init__(probability_estimator)
-
-    def _nonstationary_estimator(self, a, b):
-        raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
-
-    def _stationary_estimator(self, x_lagged, y_lagged):
-        raise DeprecationWarning('Use JiaoI4 instead!')
-
-
 class JiaoI3(Estimator):
     r"""Estimator for Jiao et al I3 with CTW and MSM probabilities"""
     def __init__(self, probability_estimator):
@@ -424,17 +411,56 @@ class JiaoI3(Estimator):
         return di, rdi, mi
 
 
-class JiaoI3Ensemble(Estimator):
-    r"""Estimator for Jiao et al I3 for MSM probabilities in ensemble average formulation"""
+class DirectedInformation(Estimator):
+    r"""Estimator for definition of DI with MSM probabilities"""
     def __init__(self, probability_estimator):
-        super(JiaoI3Ensemble, self).__init__(probability_estimator)
+        """
+        Implementation of original definition of directed information
+        """
+        super(DirectedInformation, self).__init__(probability_estimator)
 
-    def _nonstationary_estimator(self, a, b):
-        raise RuntimeError('Not meaningful to compute nonstationary estimates the ensemble way.')
+    def _nonstationary_estimator(self, X, Y):
+        raise NotImplementedError('Only DI estimators of Jiao et al implemented with non-'
+                                  'stationary probabilities.')
 
     def _stationary_estimator(self, x_lagged, y_lagged):
-        raise DeprecationWarning('Use JiaoI3 instead!')
+        """
+        Implementation of directed information formula from [1] using Markov model
+        probability estimates.
 
+        [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
+        :param x_lagged: List of binary trajectories 1 with time step msmlag.
+        :param y_lagged: List of binary trajectories 2 with time step msmlag.
+        :return: directed informant, reverse directed informant, mutual informant
+        """
+
+        tmat_x = self.p_estimator.tmat_x
+        tmat_y = self.p_estimator.tmat_y
+        tmat_xy = self.p_estimator.tmat_xy
+
+        pi_xy = self.p_estimator.pi_xy
+
+        pi_dep = np.zeros((self.Nx  * self.Ny))
+        pi_dep[self.p_estimator.active_set_xy] = pi_xy
+
+        full2active = -1 * np.ones(self.Nx * self.Ny, dtype=int)
+        full2active[self.p_estimator.active_set_xy] = np.arange(len(self.p_estimator.active_set_xy))
+
+        di = 0.
+        for xi, xim1, yi, yim1 in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny), range(self.Ny)]):
+            p_xi_yi_given_xim1_yim1 = tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * yi]]
+
+            # skip if transition has not been observed in the data
+            if p_xi_yi_given_xim1_yim1 == 0:
+                continue
+
+            p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
+            p_yi_given_xi_xim1_yim1 = p_xi_yi_given_xim1_yim1 / p_xi_given_xim1_yim1
+
+            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * p_yi_given_xi_xim1_yim1 * \
+                  np.log2(p_yi_given_xi_xim1_yim1 / tmat_y[yim1, yi])
+
+        return di, 0., 0.
 
 class TransferEntropy(Estimator):
     r"""Estimator for Schreiber, PRL, 2000"""

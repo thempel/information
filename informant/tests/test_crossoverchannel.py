@@ -16,7 +16,7 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
     """
 
     di_estimators = (informant.JiaoI4, informant.JiaoI3)
-    all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy)
+    all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy, informant.DirectedInformation)
     p_estimators = (informant.MSMProbabilities, informant.CTWProbabilities)
 
     params = {
@@ -24,7 +24,8 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         '_test_polluted_state': [dict(di_est=d, p_est=informant.MSMProbabilities) for d in di_estimators],
         '_test_congruency': [dict(di_est1=informant.JiaoI3, di_est2=informant.JiaoI4, p_est=p) for p in p_estimators],
         '_test_symmetric_estimate': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)] +
-        [dict(di_est=informant.TransferEntropy, p_est=informant.MSMProbabilities)],
+        [dict(di_est=informant.TransferEntropy, p_est=informant.MSMProbabilities),
+         dict(di_est=informant.DirectedInformation, p_est=informant.MSMProbabilities)],
         '_test_multitraj_support': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)]
     }
 
