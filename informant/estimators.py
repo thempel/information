@@ -1,6 +1,5 @@
 import itertools
 import numpy as np
-from bhmm import lag_observations
 from informant import utils
 from copy import deepcopy
 
@@ -114,8 +113,8 @@ class Estimator(object):
         assert self.Nx - 1 == tmat_x.shape[0] - 1 and np.unique(np.concatenate(X)).min() == 0
         assert self.Ny - 1 == tmat_y.shape[0] - 1 and np.unique(np.concatenate(Y)).min() == 0
 
-        x_lagged = lag_observations(X, msmlag)
-        y_lagged = lag_observations(Y, msmlag)
+        x_lagged = utils.lag_observations(X, msmlag)
+        y_lagged = utils.lag_observations(Y, msmlag)
 
         di, rev_di, mi = self._stationary_estimator(x_lagged, y_lagged)
 
@@ -547,7 +546,7 @@ class MultiEstimator(object):
         self.causally_conditioned_di = None
         self.Nx, self.Ny, self.Nw = 0, 0, 0
 
-    def estimate(self, A, B, W_, traj_eq_reweighting=False):
+    def estimate(self, A, B, W_, traj_eq_reweighting=False, n_jobs=1):
         """
         Convenience function for causally conditioned directed information
         :param A: np.array or list of np.arrays of dtype int. time series A
@@ -578,6 +577,30 @@ class MultiEstimator(object):
         self.Ny = np.unique(np.concatenate(B)).max() + 1
 
         self.causally_conditioned_di = np.zeros(len(W_))
+
+
+        if self.p_estimator.is_stationary_estimate:
+            if not traj_eq_reweighting:
+                if n_jobs == 1:
+                    for n_w, W in enumerate(W_):
+                        self.Nw = np.unique(np.concatenate(W)).max() + 1
+                        self.causally_conditioned_di[n_w] = self.stationary_estimate(W, A, B)
+                else:
+                    from pathos.multiprocessing import Pool
+                    from contextlib import closing
+
+                    pool = Pool(processes=n_jobs)
+                    args = [(W, A, B) for W in W_]
+
+                    with closing(pool):
+                        res_async = [pool.apply_async(self.stationary_estimate, a) for a in args]
+                        self.causally_conditioned_di[:] = [x.get() for x in res_async]
+            else:
+                raise NotImplementedError('Equilibrium traj reweighting not yet implemented.')
+        else:
+            for n_w, W in enumerate(W_):
+                self.causally_conditioned_di[n_w] = self.nonstationary_estimate(A, B)
+
         for n_w, W in enumerate(W_):
             self.Nw = np.unique(np.concatenate(W)).max() + 1
 
@@ -617,14 +640,16 @@ class MultiEstimator(object):
         assert np.unique(np.concatenate(Y)).min() == 0
         assert np.unique(np.concatenate(W)).min() == 0
 
-        x_lagged = lag_observations(X, msmlag)
-        y_lagged = lag_observations(Y, msmlag)
-        w_lagged = lag_observations(W, msmlag)
+        x_lagged = utils.lag_observations(X, msmlag)
+        y_lagged = utils.lag_observations(Y, msmlag)
+        w_lagged = utils.lag_observations(W, msmlag)
+
+        Nw = np.unique(np.concatenate(W)).max() + 1
 
         prob_estimator_wy = deepcopy(self.p_estimator)
         prob_estimator_wy.msmlag = 1
         prob_estimator_wy.estimate(w_lagged, y_lagged)
-        if not prob_estimator_wy.tmat_x.shape[0] == self.Nw:
+        if not prob_estimator_wy.tmat_x.shape[0] == Nw:
             return np.NaN
 
         prob_estimator_xwy = deepcopy(self.p_estimator)
@@ -632,7 +657,7 @@ class MultiEstimator(object):
         xw_lagged = [_x + self.Nx * _w for _x, _w in zip(x_lagged, w_lagged)]
 
         prob_estimator_xwy.estimate(xw_lagged, y_lagged)
-        if not prob_estimator_xwy.tmat_x.shape[0] == self.Nx * self.Nw:
+        if not prob_estimator_xwy.tmat_x.shape[0] == self.Nx * Nw:
             return np.NaN
 
         return self._stationary_estimator(w_lagged, xw_lagged, y_lagged,
@@ -709,6 +734,41 @@ class CausallyConditionedDIJiaoI4(MultiEstimator):
         di_w2y.estimate(w_lagged, y_lagged)
 
         di_xw2y = JiaoI4(probability_estimator_xwy)
+        di_xw2y.estimate(xw_lagged, y_lagged)
+
+        return di_xw2y.d - di_w2y.d
+
+
+class CausallyConditionedTE(MultiEstimator):
+    r"""
+    Estimator for causally condited transfer entropy analogously to Quinn et al 2011
+    """
+    def __init__(self, probability_estimator):
+        super(CausallyConditionedTE, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, W, X, Y):
+        raise NotImplementedError
+
+    def _stationary_estimator(self, w_lagged, xw_lagged, y_lagged,
+                              probability_estimator_wy, probability_estimator_xwy):
+        """
+        Implementation of causally conditioned transfer entropy analogously to [1]
+        using Markov model probability estimates and TE estimator from [2] as a
+        replacement to DI.
+
+        [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
+        [2] Schreiber, PRL, 2000
+
+        :param w_lagged: List of binary trajectories conditioned upon which DI is conditioned. time step msmlag.
+        :param x_lagged: List of binary trajectories 1 with time step msmlag.
+        :param y_lagged: List of binary trajectories 2 with time step msmlag.
+        :return: causally conditioned directed information
+        """
+
+        di_w2y = TransferEntropy(probability_estimator_wy)
+        di_w2y.estimate(w_lagged, y_lagged)
+
+        di_xw2y = TransferEntropy(probability_estimator_xwy)
         di_xw2y.estimate(xw_lagged, y_lagged)
 
         return di_xw2y.d - di_w2y.d

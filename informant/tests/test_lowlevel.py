@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 import itertools
-from informant.utils import multivariate_mutual_info
+from informant.utils import multivariate_mutual_info, lag_observations
 
 
 class TestLowlevel(unittest.TestCase):
@@ -47,3 +47,13 @@ class TestLowlevel(unittest.TestCase):
                       itertools.product(pi_x, pi_y, pi_w)])
 
         self.assertAlmostEqual(m, m_test)
+
+    def test_lag_observations(self):
+        t = [np.arange(0, 100).astype(int)]
+        tau = 3
+        t_lagged_ref = [np.arange(n, 100, tau).astype(int) for n in range(tau)]
+        t_lagged = lag_observations(t, tau)
+        self.assertEqual(len(t_lagged), len(t_lagged_ref))
+        self.assertEqual(len(t_lagged_ref[0]), len(t_lagged[0]))
+        for a, b in zip(t_lagged, t_lagged_ref):
+            np.testing.assert_array_equal(a, b)

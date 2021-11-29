@@ -1,4 +1,4 @@
-# ~ `informant` ~
+# `informant`
 ## A python package for estimating directed information and transfer entropy
 ### Idea
 This package was intended to provide access to estimators for directed
@@ -45,6 +45,49 @@ estimator were described by [3].
 3) Transfer entropy estimator (`TransferEntropy`)
 4) Mutual information estimator (`MutualInfoStationaryDistribution`)
 
+#### Directed network analysis
+The above directed network analysis tools will also find indirect links.
+To exclude them, [5] describe the concept of causally conditioned 
+directed information. The directed information from `X` to `Y` is 
+conditioned on a (set of) third variables `W`; it can be assessed with
+
+1) Causally conditioned DI estimator `CausallyConditionedDIJiaoI3`
+2) Causally conditioned DI estimator `CausallyConditionedDIJiaoI4`
+
+that use the estimators described above. It implemented as
+`I(X ->Y || W ) = I(X, W -> Y) - I(W -> Y)` which follows from the definitions
+in [5].
+
+### Application
+#### Installation (non-invasive)
+After cloning this repo and use the following lines in your
+jupyter notebook at import. This is completely non-invasive. 
+Dependencies should all be satisfied for pyemma users.
+```python
+import sys
+sys.path.append('/path/to/informant/')
+import informant
+``` 
+#### Convencience functions
+It is not planned to have a full convenience API. However, 
+the network of pairwise transfer entropy estimates in a protein
+can be computed and plotted as follows:
+
+```python
+dtrajs = informant.md.discretize_residue_backbone_sidechains(
+         topology_file,
+         trajectory_files,
+         tica_lag
+         )
+te = informant.md.compute_inter_residue_transfer_entropy(
+     dtrajs_dictionary,
+     msmlag
+     )
+informant.plots.plot_directed_links(ref_trajectory, te)
+```
+Depending on the protein size and the amount of data, this 
+can take a while. 
+
 ### Literature
 [1] J. Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
     Estimation of Directed Information',
@@ -56,3 +99,7 @@ estimator were described by [3].
 
 [4] Scherer et al, 'PyEMMA 2: A Software Package for Estimation,
     Validation, and Analysis of Markov Models', JCTC 2015.
+    
+[5] Quinn, Coleman, Kiyavash and Hatsopoulos, 'Estimating the directed
+    information to infer causal relationships in ensemble neural spike train
+    recordings', J Comput Neurosci, 2011
