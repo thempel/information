@@ -30,22 +30,33 @@ class Estimator(object):
         """
         A, B = utils.ensure_dtraj_format(A, B)
 
+        A_rev, B_rev = [b[:-1] for b in B], [a[1:] for a in A]
+        reverse_estimator = utils.reverse_estimate(self, A_rev, B_rev)
+
         self.Nx = np.unique(np.concatenate(A)).max() + 1
         self.Ny = np.unique(np.concatenate(B)).max() + 1
+
+        reverse_estimator.Nx = self.Ny
+        reverse_estimator.Ny = self.Nx
 
         if not self.p_estimator._estimated:
             self.p_estimator.estimate(A, B)
 
+        if not reverse_estimator.p_estimator._estimated:
+            reverse_estimator.p_estimator.estimate(A_rev, B_rev)
+
         if self.p_estimator.is_stationary_estimate:
-            if not traj_eq_reweighting:
-                self.d, self.r, self.m = self.stationary_estimate(A, B)
-            else:
+            if traj_eq_reweighting:
                 from msmtools.analysis import stationary_distribution
                 pi_xy = stationary_distribution(self.p_estimator.tmat_xy)
-                A_re, B_re = utils.reweight_trajectories(A, B, pi_xy)
-                self.d, self.r, self.m = self.stationary_estimate(A_re, B_re)
+                A, B = utils.reweight_trajectories(A, B, pi_xy)
+
+            d = self.stationary_estimate(A, B)
+            r = reverse_estimator.stationary_estimate(A_rev, B_rev)
         else:
-            self.d, self.r, self.m = self.nonstationary_estimate(A, B)
+            d = self.nonstationary_estimate(A, B)
+            r = reverse_estimator.nonstationary_estimate(A_rev, B_rev)
+        self.d, self.r, self.m = d, r, d + r
 
         return self
 
@@ -62,23 +73,7 @@ class Estimator(object):
         self.estimate(A, B, traj_eq_reweighting=traj_eq_reweighting)
         d_forward, r_forward, m_forward = self.d, self.r, self.m
 
-        # for backward direction, initialize new probability / information estimators
-        from copy import deepcopy
-        reverse_p_estimator = deepcopy(self.p_estimator)
-
-        if self.p_estimator.is_stationary_estimate:
-            if self.p_estimator._user_tmat_x:
-                reverse_p_estimator.set_transition_matrices(tmat_y=self.p_estimator.tmat_x)
-            if self.p_estimator._user_tmat_y:
-                reverse_p_estimator.set_transition_matrices(tmat_x=self.p_estimator.tmat_y)
-            if self.p_estimator._user_tmat_xy:
-                raise NotImplementedError('Transforming XY-transition matrix into YX-formulation not implemented.')
-            if self.p_estimator._dangerous_ignore_warnings_flag:
-                reverse_p_estimator._dangerous_ignore_warnings_flag = True
-            if self.p_estimator.msmkwargs is not None:
-                reverse_p_estimator.estimate(B, A, **self.p_estimator.msmkwargs)
-
-        self.reverse_estimator = self.__class__(reverse_p_estimator)
+        self.reverse_estimator = utils.reverse_estimate(self, B, A)
         self.reverse_estimator.estimate(B, A, traj_eq_reweighting=traj_eq_reweighting)
         d_backward, r_backward, m_backward = self.reverse_estimator.d, self.reverse_estimator.r, self.reverse_estimator.m
 
@@ -117,9 +112,9 @@ class Estimator(object):
         x_lagged = lag_observations(X, msmlag)
         y_lagged = lag_observations(Y, msmlag)
 
-        di, rev_di, mi = self._stationary_estimator(x_lagged, y_lagged)
+        di = self._stationary_estimator(x_lagged, y_lagged)
 
-        return di, rev_di, mi
+        return di
 
     def nonstationary_estimate(self, A, B):
         """
@@ -128,8 +123,8 @@ class Estimator(object):
         :param B: Time series 2
         :return:
         """
-        di, rev_di, mi =  self._nonstationary_estimator(A, B)
-        return di, rev_di, mi
+        di =  self._nonstationary_estimator(A, B)
+        return di
 
 
 class JiaoI4(Estimator):
@@ -166,7 +161,7 @@ class JiaoI4(Estimator):
         :param Y: time series 2
         :return:
         """
-        dis, rdis, mis = np.zeros(len(X)), np.zeros(len(X)), np.zeros(len(X))
+        dis = np.zeros(len(X))
         for n, (_X, _Y) in enumerate(zip(X, Y)):
             # map discrete time series to set {0, 1, ..., n_states_here}
             _x = utils.relabel_dtrajs(_X)
@@ -178,7 +173,7 @@ class JiaoI4(Estimator):
             n_data = len(_x)
             if len(set(_x)) == 1 or len(set(_x)) == 1:
                 #print('nothing to see here')
-                dis[n], rdis[n], mis[n] = 0., 0., 0.
+                dis[n] = 0.
                 continue
 
 
@@ -209,13 +204,9 @@ class JiaoI4(Estimator):
                 for ix in range(Nx_subset):
                     temp_DI = temp_DI + pxy[ix + iy * Nx_subset] * np.log2(pxy[ix + iy * Nx_subset] / (py[iy] * px_xy[ix]))
                     # temp_DI=temp_DI + pxy(ix+(iy-1)*Nx,:).     *log2(pxy(ix+(iy-1)*Nx,:). / (py(iy,:).*  px_xy(ix,:)));
-                    temp_MI = temp_MI + pxy[ix + iy * Nx_subset] * np.log2(pxy[ix + iy * Nx_subset] / (py[iy] * px[ix]))
-                    # temp_MI=temp_MI+  pxy(ix+(iy-1)*Nx,:).*     log2(pxy(ix+(iy-1)*Nx,:)./(py(iy,:).*px(ix,:)));
-                    temp_rev_DI = temp_rev_DI + pxy[ix + iy * Nx_subset] * np.log2(px_xy[ix] / px[ix])
-                    # temp_rev_DI=temp_rev_DI+ pxy(ix+(iy-1)*Nx,:).      *log2(px_xy(ix,:)./px(ix,:));
-            dis[n], rdis[n], mis[n] = np.mean(temp_DI), np.mean(temp_rev_DI), np.mean(temp_MI)
+            dis[n] = np.mean(temp_DI)
 
-        return dis.mean(), rdis.mean(), mis.mean()
+        return dis.mean()
 
     def _stationary_estimator(self, x_lagged, y_lagged):
         """
@@ -240,36 +231,20 @@ class JiaoI4(Estimator):
         full2active = -1 * np.ones(self.Nx * self.Ny, dtype=int)
         full2active[self.p_estimator.active_set_xy] = np.arange(len(self.p_estimator.active_set_xy))
 
-        prob_xi_to_xip1_given_yi = np.zeros((self.Nx, self.Nx, self.Ny))
-        for xi, xip1, yi in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny)]):
-            if xi + self.Nx * yi in self.p_estimator.active_set_xy:
-                for _y in range(self.Ny):
-                    if xip1 + self.Nx * _y in self.p_estimator.active_set_xy:
-                        prob_xi_to_xip1_given_yi[xi, xip1, yi] += tmat_xy[full2active[xi + self.Nx * yi],
-                                                                          full2active[xip1 + self.Nx * _y]]
 
+        di = 0.
+        for xi, xim1, yi, yim1 in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny), range(self.Ny)]):
+            p_xi_yi_given_xim1_yim1 = tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * yi]]
 
-        di, rdi, mi = 0., 0., 0.
-        for xi, yi in itertools.product(range(self.Nx), range(self.Ny)):
-            if xi + self.Nx * yi in self.p_estimator.active_set_xy:
-                tmat_y_at_yi_bloated = np.repeat(tmat_y[yi], self.Nx)
-                tmat_x_at_xi_bloated = np.tile(tmat_x[xi], self.Ny)
-                prob_xi_xip1_given_yi_at_xi_yi_bloated = np.tile(prob_xi_to_xip1_given_yi[xi, :, yi], self.Ny)
-                tmat_xy_fullset = np.zeros((self.Nx * self.Ny))
-                tmat_xy_fullset[self.p_estimator.active_set_xy] = tmat_xy[full2active[xi + self.Nx * yi]]
+            # skip if transition has not been observed in the data
+            if p_xi_yi_given_xim1_yim1 == 0:
+                continue
 
-                idx = np.logical_and(tmat_xy_fullset > 0,
-                                     tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated > 0)
+            p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
 
-                di += pi_dep[xi + self.Nx * yi] * np.sum(tmat_xy_fullset[idx] * np.log2(
-                    tmat_xy_fullset[idx] / (tmat_y_at_yi_bloated * prob_xi_xip1_given_yi_at_xi_yi_bloated)[idx]))
-
-                rdi += pi_dep[xi + self.Nx * yi] * np.sum(tmat_xy_fullset[idx] * np.log2(
-                    prob_xi_xip1_given_yi_at_xi_yi_bloated[idx] / tmat_x_at_xi_bloated[idx]))
-                mi += pi_dep[xi + self.Nx * yi] * np.sum(tmat_xy_fullset[idx] * np.log2(
-                    tmat_xy_fullset[idx] / (tmat_y_at_yi_bloated * tmat_x_at_xi_bloated)[idx]))
-
-        return di, rdi, mi
+            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1**2 * \
+                  np.log2(p_xi_yi_given_xim1_yim1 / (tmat_y[yim1, yi] * p_xi_given_xim1_yim1))
+        return di
 
 
 class JiaoI3(Estimator):
@@ -350,26 +325,21 @@ class JiaoI3(Estimator):
             py_x_xy = pxy / temp
 
             temp_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
-            temp_MI = np.zeros(_x.shape[0] - self.p_estimator.D)
-            temp_rev_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
             t = np.arange(py_x_xy.shape[1], dtype=int)
             for iy in range(Ny_subset):
                     temp_DI = temp_DI + py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, t] * \
                                         np.log2(py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, t] /\
                                                 py[iy])
-                    temp_MI = temp_MI + py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, t] * \
-                                        np.log2(pxy[_x[self.p_estimator.D:] + Nx_subset * iy, t] / \
-                                                (py[iy] * px[_x[self.p_estimator.D:], t]))
-                    temp_rev_DI = temp_rev_DI + px_xy[iy] * np.log2(px_xy[iy] / px[iy])
 
-            dis[n], rdis[n], mis[n] = np.mean(temp_DI), np.mean(temp_rev_DI), np.mean(temp_MI)
+            dis[n] = np.mean(temp_DI)
 
-        return dis.mean(), rdis.mean(), mis.mean()
+        return dis.mean()
 
     def _stationary_estimator(self, x_lagged, y_lagged):
         """
-        Implementation of directed informant estimator I4 from [1] using Markov model
+        Implementation of directed informant estimator I3 from [1] using Markov model
         probability estimates.
+        NOTE: This equals the direct estimation of DI.
 
         [1] Jiao et al, Universal Estimation of Directed Information, 2013.
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
@@ -401,14 +371,10 @@ class JiaoI3(Estimator):
             p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
             p_yi_given_xi_xim1_yim1 = p_xi_yi_given_xim1_yim1 / p_xi_given_xim1_yim1
 
-            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * \
+            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * p_yi_given_xi_xim1_yim1 * \
                   np.log2(p_yi_given_xi_xim1_yim1 / tmat_y[yim1, yi])
-            rdi += pi_dep[xim1 + self.Nx * yim1] * p_xi_given_xim1_yim1 * p_xi_given_xim1_yim1 * \
-                   np.log2(p_xi_given_xim1_yim1/tmat_x[xim1, xi])
-            mi += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * \
-                 np.log2(p_xi_yi_given_xim1_yim1/(tmat_y[yim1, yi] * tmat_x[xim1, xi]))
 
-        return di, rdi, mi
+        return di
 
 
 class DirectedInformation(Estimator):
@@ -460,7 +426,7 @@ class DirectedInformation(Estimator):
             di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * p_yi_given_xi_xim1_yim1 * \
                   np.log2(p_yi_given_xi_xim1_yim1 / tmat_y[yim1, yi])
 
-        return di, 0., 0.
+        return di
 
 class TransferEntropy(Estimator):
     r"""Estimator for Schreiber, PRL, 2000"""
@@ -503,10 +469,10 @@ class TransferEntropy(Estimator):
                         if p_jnp1_given_in_jn > 1e-16:
                             d += pi_dep[i_n + self.Nx  * j_n] * p_jnp1_given_in_jn * np.log2(p_jnp1_given_in_jn /
                                                                                              tmat_y[j_n, j_np1])
-        return d, 0., 0.
+        return d
 
 
-class MutualInfoStationaryDistribution(Estimator):
+class MutualInfoStationaryDistribution():
     r"""Estimator for Schreiber, PRL, 2000"""
     def __init__(self, probability_estimator):
         """
@@ -515,11 +481,28 @@ class MutualInfoStationaryDistribution(Estimator):
         """
         super(MutualInfoStationaryDistribution, self).__init__(probability_estimator)
 
-    def _nonstationary_estimator(self, a, b):
-        raise NotImplementedError("Doesn't make sense...")
+        self.p_estimator = probability_estimator
 
-    def _stationary_estimator(self, x_lagged, y_lagged):
+        self.d, self.r, self.m = None, None, None
+        self.Nx, self.Ny = 0, 0
 
+    def estimate(self, A, B):
+        """
+        Convenience function for mutual informant estimation.
+        :param A: time series A
+        :param B: time series B
+        :return: self
+        """
+        X, Y = utils.ensure_dtraj_format(A, B)
+
+        self.Nx = np.unique(np.concatenate(X)).max() + 1
+        self.Ny = np.unique(np.concatenate(Y)).max() + 1
+
+        assert self.Nx - 1 == self.p_estimator.tmat_x.shape[0] - 1 and np.unique(np.concatenate(X)).min() == 0
+        assert self.Ny - 1 == self.p_estimator.tmat_y.shape[0] - 1 and np.unique(np.concatenate(Y)).min() == 0
+
+        if not self.p_estimator._estimated:
+            self.p_estimator.estimate(X, Y)
 
         pi_dep = np.zeros((self.Nx * self.Ny))
         pi_dep[self.p_estimator.active_set_xy] = self.p_estimator.pi_xy

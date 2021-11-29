@@ -11,7 +11,7 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
     di_estimators = (informant.JiaoI4, informant.JiaoI3)
     all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy, informant.DirectedInformation)
     p_estimators = (informant.MSMProbabilities, informant.CTWProbabilities)
-
+    ccdi_estimators = (informant.CausallyConditionedDIJiaoI3, informant.CausallyConditionedDIJiaoI4)
     params = {
         '_test_binary': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)] +
                               [dict(di_est=informant.TransferEntropy, p_est=informant.MSMProbabilities),
@@ -22,7 +22,7 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         '_test_symmetric_estimate': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)] +
                             [dict(di_est=informant.TransferEntropy, p_est=informant.MSMProbabilities),
                              dict(di_est=informant.DirectedInformation, p_est=informant.MSMProbabilities)],
-
+        '_test_causally_cond_simple': [dict(di_est=d) for d in ccdi_estimators]
         #'_test_polluted_state': [dict(di_est=d, p_est=informant.MSMProbabilities) for d in di_estimators],
         #'_test_congruency': [dict(di_est1=informant.JiaoI3, di_est2=informant.JiaoI4, p_est=p) for p in p_estimators],
         #'_test_symmetric_estimate': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)] +
@@ -122,8 +122,8 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         self.assertAlmostEqual(est2.r, est1.r, places=1)
         self.assertAlmostEqual(est2.m, est1.m, places=1)
 
-    def test_causally_cond_simple(self):
-        est = informant.CausallyConditionedDI(informant.NetMSMProbabilities())
+    def _test_causally_cond_simple(self, di_est):
+        est = di_est(informant.MSMProbabilities())
         est.estimate(self.A_nonbinary, self.B_nonbinary, self.A_binary)
 
         np.testing.assert_allclose(est.causally_conditioned_di[0], 0, atol=1e-2, rtol=1e-2)

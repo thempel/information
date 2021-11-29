@@ -115,3 +115,33 @@ def multivariate_mutual_info(p_x, p_y, p_w, p_xy, p_xw, p_yw, p_xyw):
                     m += p_xyw[i_xyw] * np.log2(p_xy[i_xy] * p_xw[i_xw] * p_yw[i_yw] /
                                                 (p1 * p2 * p3 * p_xyw[i_xyw]))
     return m
+
+def reverse_estimate(forward_estimator, A, B):
+    """
+    Return backward estimator for the forward estimator from A -> B
+    This function will return and fit the estimator from B -> A.
+    :param forward_estimator:
+    :param A:
+    :param B:
+    :return:
+    """
+    # TODO: this is ugly, however deepcopy does not reset class.
+    p_estimator_args = [forward_estimator.p_estimator.__getattribute__(a) for a in
+                        forward_estimator.p_estimator.__init__.__code__.co_varnames[1:]]
+    reverse_p_estimator = forward_estimator.p_estimator.__class__(*p_estimator_args)
+
+    if forward_estimator.p_estimator.is_stationary_estimate:
+        if forward_estimator.p_estimator._user_tmat_x:
+            reverse_p_estimator.set_transition_matrices(tmat_y=forward_estimator.p_estimator.tmat_x)
+        if forward_estimator.p_estimator._user_tmat_y:
+            reverse_p_estimator.set_transition_matrices(tmat_x=forward_estimator.p_estimator.tmat_y)
+        if forward_estimator.p_estimator._user_tmat_xy:
+            raise NotImplementedError('Transforming XY-transition matrix into YX-formulation not implemented.')
+        if forward_estimator.p_estimator._dangerous_ignore_warnings_flag:
+            reverse_p_estimator._dangerous_ignore_warnings_flag = True
+
+        if forward_estimator.p_estimator.msmkwargs is not None:
+            reverse_p_estimator.estimate(A, B, **forward_estimator.p_estimator.msmkwargs)
+
+    reverse_estimator = forward_estimator.__class__(reverse_p_estimator)
+    return reverse_estimator
