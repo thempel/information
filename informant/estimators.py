@@ -241,7 +241,7 @@ class JiaoI4(Estimator):
 
             p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
 
-            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1**2 * \
+            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * \
                   np.log2(p_xi_yi_given_xim1_yim1 / (tmat_y[yim1, yi] * p_xi_given_xim1_yim1))
         return di
 
@@ -370,7 +370,7 @@ class JiaoI3(Estimator):
             p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
             p_yi_given_xi_xim1_yim1 = p_xi_yi_given_xim1_yim1 / p_xi_given_xim1_yim1
 
-            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * p_yi_given_xi_xim1_yim1 * \
+            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * \
                   np.log2(p_yi_given_xi_xim1_yim1 / tmat_y[yim1, yi])
 
         return di
@@ -422,7 +422,10 @@ class DirectedInformation(Estimator):
             p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
             p_yi_given_xi_xim1_yim1 = p_xi_yi_given_xim1_yim1 / p_xi_given_xim1_yim1
 
-            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * p_yi_given_xi_xim1_yim1 * \
+            # di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * p_yi_given_xi_xim1_yim1 * \
+            #       np.log2(p_yi_given_xi_xim1_yim1 / tmat_y[yim1, yi])
+            # use Kullback entropy instead of KL divergence (as done by Schreiber)
+            di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * \
                   np.log2(p_yi_given_xi_xim1_yim1 / tmat_y[yim1, yi])
 
         return di
@@ -478,11 +481,9 @@ class MutualInfoStationaryDistribution():
         Implementation mutual information (as described by Schreiber, PRL, 2000)
 
         """
-        super(MutualInfoStationaryDistribution, self).__init__(probability_estimator)
-
         self.p_estimator = probability_estimator
 
-        self.d, self.r, self.m = None, None, None
+        self.m = None
         self.Nx, self.Ny = 0, 0
 
     def estimate(self, A, B):
@@ -497,11 +498,11 @@ class MutualInfoStationaryDistribution():
         self.Nx = np.unique(np.concatenate(X)).max() + 1
         self.Ny = np.unique(np.concatenate(Y)).max() + 1
 
-        assert self.Nx - 1 == self.p_estimator.tmat_x.shape[0] - 1 and np.unique(np.concatenate(X)).min() == 0
-        assert self.Ny - 1 == self.p_estimator.tmat_y.shape[0] - 1 and np.unique(np.concatenate(Y)).min() == 0
-
         if not self.p_estimator._estimated:
             self.p_estimator.estimate(X, Y)
+
+        assert self.Nx - 1 == self.p_estimator.tmat_x.shape[0] - 1 and np.unique(np.concatenate(X)).min() == 0
+        assert self.Ny - 1 == self.p_estimator.tmat_y.shape[0] - 1 and np.unique(np.concatenate(Y)).min() == 0
 
         pi_dep = np.zeros((self.Nx * self.Ny))
         pi_dep[self.p_estimator.active_set_xy] = self.p_estimator.pi_xy
@@ -512,7 +513,8 @@ class MutualInfoStationaryDistribution():
                 if pi_dep[n1 + self.Nx*n2] > 0:
                     m += pi_dep[n1 + self.Nx*n2] * np.log2(pi_dep[n1 + self.Nx*n2] / (p1 * p2))
 
-        return 0., 0., m
+        self.m = m
+        return self
 
 
 class MultiEstimator(object):

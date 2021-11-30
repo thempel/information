@@ -1,4 +1,7 @@
 import unittest
+
+import pytest
+
 import informant
 import numpy as np
 import msmtools
@@ -34,7 +37,7 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
     def setUpClass(cls):
         p = 0.3
         eps = .2
-        N = int(1e4)
+        N = int(1e5)
         T = np.array([[1 - p, p], [p, 1 - p]])
         cls.X = msmtools.generation.generate_traj(T, N)
         _errbits = np.random.rand(N) < eps
@@ -44,6 +47,17 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         cls.true_value_DI = entropy1D(p) - (((1 - p) * (1 - eps) + p * eps) * entropy1D(p * eps / ((1 - p) * (1 - eps) + p * eps)) + \
                     ((p) * (1 - eps) + (1 - p) * eps) * entropy1D((1 - p) * eps / ((p) * (1 - eps) + (1 - p) * eps)))
 
+    def test_verysimple(self):
+        estimator = informant.DirectedInformation(informant.MSMProbabilities())
+
+        estimator.estimate(self.X, self.Y)
+
+        self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
+        self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
+        self.assertAlmostEqual(estimator.r, 0., places=1)
+
+        return True
+
     def _test_simple(self, di_est, p_est):
         estimator = di_est(p_est())
 
@@ -51,7 +65,7 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
         self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
-        self.assertAlmostEqual(estimator.r, self.true_value_DI, places=1)
+        self.assertAlmostEqual(estimator.r, 0., places=1)
 
     def _test_polluted_state(self, di_est, p_est):
         """
@@ -67,7 +81,7 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
         self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
-        self.assertAlmostEqual(estimator.r, self.true_value_DI, places=1)
+        self.assertAlmostEqual(estimator.r, 0., places=1)
 
     def _test_congruency(self, di_est1, di_est2, p_est):
         est1 = di_est1(p_est())
@@ -80,6 +94,7 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         self.assertAlmostEqual(est1.r, est2.r, places=2)
         self.assertAlmostEqual(est1.m, est2.m, places=2)
 
+    @unittest.skip('not clear what this means')
     def _test_symmetric_estimate(self, di_est, p_est):
 
         estimator = di_est(p_est()).symmetrized_estimate(self.X, self.Y)
@@ -90,13 +105,7 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m, places=2)
         self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
-        self.assertAlmostEqual(estimator.r, self.true_value_DI, places=1)
-
-    def test_now(self):
-        est = informant.DirectedInformation(informant.MSMProbabilities())
-        est.estimate(self.X, self.Y)
-
-        self.assertAlmostEqual(est.d, self.true_value_DI, places=2)
+        self.assertAlmostEqual(estimator.r, 0., places=1)
 
     def test_MSMI4re(self):
         """
@@ -123,7 +132,7 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
 
         self.assertAlmostEqual(estimator.d + estimator.r, estimator.m)
         self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
-        self.assertAlmostEqual(estimator.r, self.true_value_DI, places=1)
+        self.assertAlmostEqual(estimator.r, 0., places=1)
 
     @unittest.skip("Need to derive true result to compare to!")
     def test_delayed(self):
