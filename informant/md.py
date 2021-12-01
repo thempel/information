@@ -67,7 +67,6 @@ def compute_inter_residue_transfer_entropy(dtrajs_dictionary, msmlag, reversible
         B = dtrajs_dictionary[str(r2)]
 
         p = informant.MSMProbabilities(msmlag=msmlag, reversible=reversible)
-        p._dangerous_ignore_warnings_flag = True
 
         est = informant.TransferEntropy(p)
         est.symmetrized_estimate(A, B)

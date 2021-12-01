@@ -167,8 +167,7 @@ def reverse_estimate(forward_estimator, A, B):
             reverse_p_estimator.set_transition_matrices(tmat_x=forward_estimator.p_estimator.tmat_y)
         if forward_estimator.p_estimator._user_tmat_xy:
             raise NotImplementedError('Transforming XY-transition matrix into YX-formulation not implemented.')
-        if forward_estimator.p_estimator._dangerous_ignore_warnings_flag:
-            reverse_p_estimator._dangerous_ignore_warnings_flag = True
+        reverse_p_estimator._ignore_no_obs = forward_estimator.p_estimator._ignore_no_obs
 
         if forward_estimator.p_estimator.msmkwargs is not None:
             reverse_p_estimator.estimate(A, B, **forward_estimator.p_estimator.msmkwargs)

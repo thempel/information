@@ -71,7 +71,6 @@ class TestCoupledMapLattice(unittest.TestCase):
             X[-6:] = 2
             Y[-6:] = 2
             p = informant.MSMProbabilities(reversible=False, msmlag=1)
-            p._dangerous_ignore_warnings_flag = True
             e = informant.TransferEntropy(p)
             d += e.estimate(X, Y).d
 

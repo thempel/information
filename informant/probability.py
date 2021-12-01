@@ -29,7 +29,7 @@ class MSMProbabilities:
 
         self._estimated = False
 
-        self._dangerous_ignore_warnings_flag = False
+        self._ignore_no_obs = True
 
     def estimate(self, X, Y, **kwargs):
         """
@@ -92,9 +92,10 @@ class MSMProbabilities:
                 self.active_set_xy = msmtools.estimation.largest_connected_set(c)
 
         if not self.tmat_x.shape[0] * self.tmat_y.shape[0] == self.tmat_xy.shape[0]:
-            print(self.tmat_x.shape, self.tmat_y.shape, self.tmat_xy.shape)
-            if not self._dangerous_ignore_warnings_flag:
-                raise NotImplementedError('Combined model is not showing all combinatorial states.')
+            if not self._ignore_no_obs:
+                raise NotImplementedError('Combined model is not showing all combinatorial states.' +
+                                          f'x: {self.tmat_x.shape[0]}, y:{self.tmat_y.shape[0]}, ' +
+                                          f'xy: {self.tmat_xy.shape[0]}')
 
         self._estimated = True
         return self
