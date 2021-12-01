@@ -455,10 +455,6 @@ class TransferEntropy(Estimator):
         full2active = -1 * np.ones(self.Nx * self.Ny, dtype=int)
         full2active[self.p_estimator.active_set_xy] = np.arange(len(self.p_estimator.active_set_xy))
 
-        if not tmat_x.shape[0] * tmat_y.shape[0] == tmat_xy.shape[0]:
-            print(tmat_x.shape[0], tmat_y.shape[0], tmat_xy.shape[0])
-            # return 0
-
         d = 0.
         for j_n in range(self.Ny):
             for i_n in range(self.Nx):
