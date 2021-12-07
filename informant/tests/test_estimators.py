@@ -11,7 +11,9 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
     di_estimators = (informant.JiaoI4, informant.JiaoI3)
     all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy, informant.DirectedInformation)
     p_estimators = (informant.MSMProbabilities, informant.CTWProbabilities)
-    ccdi_estimators = (informant.CausallyConditionedDIJiaoI3, informant.CausallyConditionedDIJiaoI4)
+    ccdi_estimators = (informant.CausallyConditionedDIJiaoI3,
+                       informant.CausallyConditionedDIJiaoI4,
+                       informant.CausallyConditionedTE)
     params = {
         '_test_binary': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)] +
                               [dict(di_est=informant.TransferEntropy, p_est=informant.MSMProbabilities),
@@ -32,11 +34,11 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
 
     @classmethod
     def setUpClass(cls):
-        cls.A_binary = np.random.randint(0, 2, 5000)
-        cls.B_binary = np.random.randint(0, 2, 5000)
+        cls.A_binary = np.random.randint(0, 2, 100000)
+        cls.B_binary = np.random.randint(0, 2, 100000)
 
-        cls.A_nonbinary = np.random.randint(0, 3, 5000)
-        cls.B_nonbinary = np.random.randint(0, 4, 5000)
+        cls.A_nonbinary = np.random.randint(0, 3, 100000)
+        cls.B_nonbinary = np.random.randint(0, 4, 100000)
 
     def _test_binary(self, di_est, p_est):
         estimator = di_est(p_est()).estimate(self.A_binary, self.B_binary)

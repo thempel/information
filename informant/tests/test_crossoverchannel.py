@@ -118,7 +118,7 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         N = int(1e4)
         T = np.array([[1 - p, p], [p, 1 - p]])
         X_list, Y_list = [], []
-        for _ in range(20):
+        for _ in range(50):
             X = msmtools.generation.generate_traj(T, N)
             _errbits = np.random.rand(N) < eps
             Y = X.copy()
