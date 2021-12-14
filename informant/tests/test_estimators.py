@@ -11,7 +11,8 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
     di_estimators = (informant.JiaoI4, informant.JiaoI3)
     all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy, informant.DirectedInformation)
     p_estimators = (informant.MSMProbabilities, informant.CTWProbabilities)
-    ccdi_estimators = (informant.CausallyConditionedDIJiaoI3,
+    ccdi_estimators = (informant.CausallyConditionedDI,
+                       informant.CausallyConditionedDIJiaoI3,
                        informant.CausallyConditionedDIJiaoI4,
                        informant.CausallyConditionedTE)
     params = {

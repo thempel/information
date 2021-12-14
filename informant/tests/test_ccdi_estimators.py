@@ -13,7 +13,8 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
     Class sets up a simple binary channel with cross-overs and delay.
     """
 
-    di_estimators = (informant.CausallyConditionedDIJiaoI3, informant.CausallyConditionedDIJiaoI4)
+    di_estimators = (informant.CausallyConditionedDI, informant.CausallyConditionedDIJiaoI3,
+                     informant.CausallyConditionedDIJiaoI4)
     p_estimators = (informant.MSMProbabilities, )
     default_test_grid = [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)]
     params = {

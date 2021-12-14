@@ -647,6 +647,38 @@ class MultiEstimator(object):
     def nonstationary_estimate(self, A, B):
         raise NotImplementedError('Not implemented.')
 
+class CausallyConditionedDI(MultiEstimator):
+    r"""
+    Estimator for causally condited directed information as described by Quinn et al 2011
+    with I3 estimator by Jiao et al
+    """
+    def __init__(self, probability_estimator):
+        super(CausallyConditionedDI, self).__init__(probability_estimator)
+
+    def _nonstationary_estimator(self, W, X, Y):
+        raise NotImplementedError
+
+    def _stationary_estimator(self, w_lagged, xw_lagged, y_lagged,
+                              probability_estimator_wy, probability_estimator_xwy):
+        """
+        Implementation of causally conditioned directed information from [1] using Markov model
+        probability estimates..
+
+        [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
+
+        :param w_lagged: List of binary trajectories conditioned upon which DI is conditioned. time step msmlag.
+        :param x_lagged: List of binary trajectories 1 with time step msmlag.
+        :param y_lagged: List of binary trajectories 2 with time step msmlag.
+        :return: causally conditioned directed information
+        """
+
+        di_w2y = DirectedInformation(probability_estimator_wy)
+        di_w2y.estimate(w_lagged, y_lagged)
+
+        di_xw2y = DirectedInformation(probability_estimator_xwy)
+        di_xw2y.estimate(xw_lagged, y_lagged)
+
+        return di_xw2y.d - di_w2y.d
 
 class CausallyConditionedDIJiaoI3(MultiEstimator):
     r"""
