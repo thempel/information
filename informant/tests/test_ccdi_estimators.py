@@ -4,8 +4,7 @@ import numpy as np
 import six
 import itertools
 from utils import GenerateTestMatrix
-import msmtools
-
+from deeptime.markov.msm import MarkovStateModel
 
 class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
     """
@@ -38,7 +37,8 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         eps = .2
         N = int(1e4)
         T = np.array([[1 - p, p], [p, 1 - p]])
-        X = msmtools.generation.generate_traj(T, N)
+        msm = MarkovStateModel(transition_matrix=T)
+        X = msm.simulate(N)
         _errbits = np.random.rand(N) < eps
         Y = X.copy()
         Y[_errbits] = 1 - Y[_errbits]

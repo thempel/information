@@ -4,10 +4,10 @@ import pytest
 
 import informant
 import numpy as np
-import msmtools
 import six
 import itertools
 from utils import GenerateTestMatrix
+from deeptime.markov.msm import MarkovStateModel
 
 def entropy1D(x):
     return - x * np.log2(x) - (1 - x) * np.log2(1 - x)
@@ -40,7 +40,10 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         eps = .2
         N = int(1e5)
         T = np.array([[1 - p, p], [p, 1 - p]])
-        cls.X = msmtools.generation.generate_traj(T, N)
+
+
+        msm = MarkovStateModel(transition_matrix=T)
+        cls.X = msm.simulate(N)
         _errbits = np.random.rand(N) < eps
         cls.Y = cls.X.copy()
         cls.Y[_errbits] = 1 - cls.Y[_errbits]
@@ -114,7 +117,8 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         T = np.array([[1 - p, p], [p, 1 - p]])
         X_list, Y_list = [], []
         for _ in range(50):
-            X = msmtools.generation.generate_traj(T, N)
+            msm = MarkovStateModel(transition_matrix=T)
+            X = msm.simulate(N)
             _errbits = np.random.rand(N) < eps
             Y = X.copy()
             Y[_errbits] = 1 - Y[_errbits]
@@ -136,7 +140,9 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         p = 0.01
         eps = .33
         T = np.array([[1-p, p], [p, 1-p]])
-        X = msmtools.generation.generate_traj(T, N)
+
+        msm = MarkovStateModel(transition_matrix=T)
+        X = msm.simulate(N)
         _errbits = np.random.rand(N) < eps
         Y = X.copy()
         Y[_errbits] = 1 - Y[_errbits]

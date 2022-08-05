@@ -6,6 +6,6 @@ setup(name='informant',
       url='https://github.com/markovmodel/information.git',
       packages=['informant'],
       zip_safe=False,
-      install_requires=['numpy', 'msmtools', 'tqdm', 'six', 'pathos'],
+      install_requires=['numpy', 'deeptime', 'tqdm', 'six', 'pathos'],
       test_suite='py.test',
       tests_require=['pytest'])

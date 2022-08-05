@@ -46,7 +46,7 @@ class Estimator(object):
 
         if self.p_estimator.is_stationary_estimate:
             if traj_eq_reweighting:
-                from msmtools.analysis import stationary_distribution
+                from deeptime.markov.tools.analysis import stationary_distribution
                 pi_xy = stationary_distribution(self.p_estimator.tmat_xy)
                 A, B = utils.reweight_trajectories(A, B, pi_xy)
 

@@ -1,6 +1,24 @@
 import numpy as np
-import msmtools
+from deeptime.markov import TransitionCountEstimator
+from deeptime.markov.msm import MaximumLikelihoodMSM
+from deeptime.markov.tools.analysis import stationary_distribution
 from informant import utils
+
+
+def get_transition_matrix(dtrajs, lag, reversible, **kwargs):
+    """
+    convenience function for computing transition matrix from descrete time-series
+    :param dtrajs: (list of) np.ndarray, time-series of descrete data
+    :param lag: int, msm lag time
+    :param reversible: bool, use reversible or non-reversible msm estimator
+    :param kwargs: passed to deeptime.markov.msm.MaximumLikelihoodMSM()
+    :return: transition matrix, indices of largest connected set
+    """
+    count_model = TransitionCountEstimator(lagtime=lag, count_mode='sliding').fit_fetch(dtrajs)
+    count_model_largest = count_model.submodel_largest()
+    transition_probability_model = MaximumLikelihoodMSM(reversible=reversible, **kwargs).fit_fetch(count_model_largest)
+
+    return transition_probability_model.transition_matrix, count_model.connected_sets(sort_by_population=True)[0]
 
 
 class MSMProbabilities:
@@ -49,47 +67,30 @@ class MSMProbabilities:
 
         if not self.tmat_ck_estimate:
             if not self._user_tmat_x:
-                c_lcc = msmtools.estimation.largest_connected_submatrix(
-                    msmtools.estimation.count_matrix(X, self.msmlag, sparse_return=False)
-                )
-                self.tmat_x = msmtools.estimation.transition_matrix(c_lcc, reversible=self.reversible, **kwargs)
+                self.tmat_x, _ = get_transition_matrix(X, self.msmlag, self.reversible, **kwargs)
 
             if not self._user_tmat_y:
-                c_lcc = msmtools.estimation.largest_connected_submatrix(
-                    msmtools.estimation.count_matrix(Y, self.msmlag, sparse_return=False)
-                )
-                self.tmat_y = msmtools.estimation.transition_matrix(c_lcc, reversible=self.reversible, **kwargs)
+                self.tmat_y, _ = get_transition_matrix(Y, self.msmlag, self.reversible, **kwargs)
+
             if not self._user_tmat_xy:
-                c = msmtools.estimation.count_matrix([_x + Nx * _y for _x, _y in zip(X, Y)],
-                                                     self.msmlag, sparse_return=False)
-                self.tmat_xy = msmtools.estimation.transition_matrix(
-                    msmtools.estimation.largest_connected_submatrix(c), reversible=self.reversible, **kwargs
-                )
-                self.active_set_xy = msmtools.estimation.largest_connected_set(c)
+                self.tmat_xy, self.active_set_xy = get_transition_matrix(
+                    [_x + Nx * _y for _x, _y in zip(X, Y)], self.msmlag, self.reversible, **kwargs)
+
         else:
             if not self._user_tmat_x:
-                c_lcc = msmtools.estimation.largest_connected_submatrix(
-                    msmtools.estimation.count_matrix(X, 1, sparse_return=False)
-                )
-                self.tmat_x = np.linalg.matrix_power(
-                    msmtools.estimation.transition_matrix(c_lcc, reversible=self.reversible, **kwargs), self.msmlag
-                )
+                _tmat_x, _ = get_transition_matrix(X, 1, self.reversible, **kwargs)
+                self.tmat_x = np.linalg.matrix_power(_tmat_x, self.msmlag)
+
             if not self._user_tmat_y:
-                c_lcc = msmtools.estimation.largest_connected_submatrix(
-                    msmtools.estimation.count_matrix(Y, 1, sparse_return=False)
-                )
-                self.tmat_y = np.linalg.matrix_power(
-                    msmtools.estimation.transition_matrix(c_lcc, reversible=self.reversible, **kwargs), self.msmlag
-                )
+                _tmat_y, _ = get_transition_matrix(Y, 1, self.reversible, **kwargs)
+                self.tmat_y = np.linalg.matrix_power(_tmat_y, self.msmlag)
+
             if not self._user_tmat_xy:
-                c = msmtools.estimation.count_matrix([_x + Nx * _y for _x, _y in zip(X, Y)],
-                                                     1, sparse_return=False)
-                self.tmat_xy = np.linalg.matrix_power(
-                    msmtools.estimation.transition_matrix(msmtools.estimation.largest_connected_submatrix(c),
-                                                          reversible=self.reversible, **kwargs),
-                    self.msmlag
-                )
-                self.active_set_xy = msmtools.estimation.largest_connected_set(c)
+                # assumes that active set doesn't decay with time
+                _tmat_xy, self.active_set_xy = get_transition_matrix(
+                    [_x + Nx * _y for _x, _y in zip(X, Y)], 1, self.reversible, **kwargs)
+
+                self.tmat_xy = np.linalg.matrix_power(_tmat_xy, self.msmlag)
 
         if not self.tmat_x.shape[0] * self.tmat_y.shape[0] == self.tmat_xy.shape[0]:
             if not self._ignore_no_obs:
@@ -140,7 +141,7 @@ class MSMProbabilities:
             raise RuntimeError('Have to estimate before stationary distribution can be computed.')
 
         if self._pi_x is None:
-            self._pi_x = msmtools.analysis.stationary_distribution(self.tmat_x)
+            self._pi_x = stationary_distribution(self.tmat_x)
 
         return self._pi_x
 
@@ -150,7 +151,7 @@ class MSMProbabilities:
             raise RuntimeError('Have to estimate before stationary distribution can be computed.')
 
         if self._pi_y is None:
-            self._pi_y = msmtools.analysis.stationary_distribution(self.tmat_y)
+            self._pi_y = stationary_distribution(self.tmat_y)
 
         return self._pi_y
 
@@ -160,7 +161,7 @@ class MSMProbabilities:
             raise RuntimeError('Have to estimate before stationary distribution can be computed.')
 
         if self._pi_xy is None:
-            self._pi_xy = msmtools.analysis.stationary_distribution(self.tmat_xy)
+            self._pi_xy = stationary_distribution(self.tmat_xy)
 
         return self._pi_xy
 

@@ -1,7 +1,7 @@
 import unittest
 import informant
 import numpy as np
-import msmtools
+from deeptime.markov.tools.analysis import is_transition_matrix
 
 
 class TestProbabilitySimple(unittest.TestCase):
@@ -11,9 +11,9 @@ class TestProbabilitySimple(unittest.TestCase):
         B = np.random.randint(0, 2, 100)
         prob_est.estimate(A, B)
 
-        self.assertTrue(msmtools.analysis.is_transition_matrix(prob_est.tmat_x))
-        self.assertTrue(msmtools.analysis.is_transition_matrix(prob_est.tmat_y))
-        self.assertTrue(msmtools.analysis.is_transition_matrix(prob_est.tmat_xy))
+        self.assertTrue(is_transition_matrix(prob_est.tmat_x))
+        self.assertTrue(is_transition_matrix(prob_est.tmat_y))
+        self.assertTrue(is_transition_matrix(prob_est.tmat_xy))
 
         self.assertAlmostEqual(prob_est.pi_xy.sum(), 1)
         self.assertAlmostEqual(prob_est.pi_x.sum(), 1)
