@@ -2,9 +2,13 @@
 from . probability import  *
 from . estimators import *
 from . import utils
-from . import plots
 from . import generators
 try:
     from . import md
 except ModuleNotFoundError:
-    print('md subpackage requires pyemma installation.')
+    print('informant.md requires pyemma installation.')
+
+try:
+    from . import plots
+except ModuleNotFoundError:
+    print('informant.plots require matplotlib installation')

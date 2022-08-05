@@ -1,4 +1,7 @@
 import unittest
+
+import pytest
+
 import informant
 import numpy as np
 
@@ -18,6 +21,7 @@ def compute_lattice(eps, n_steps=100000, n_maps=100):
 
     return x_n
 
+@pytest.skip('temporarily skipping, too slow', allow_module_level=True)
 class TestCoupledMapLattice(unittest.TestCase):
     """
     Coupled map lattice as described by Schreiber, PRL, 2000.

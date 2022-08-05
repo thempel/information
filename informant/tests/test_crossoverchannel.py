@@ -20,7 +20,8 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
 
     di_estimators = (informant.JiaoI4, informant.JiaoI3)
     all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy, informant.DirectedInformation)
-    p_estimators = (informant.MSMProbabilities, informant.CTWProbabilities)
+    p_estimators = (informant.MSMProbabilities, )
+                    #informant.CTWProbabilities) #TODO: activate again
 
     params = {
         '_test_simple': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)],
@@ -94,12 +95,6 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         self.assertAlmostEqual(est1.r, est2.r, places=2)
         self.assertAlmostEqual(est1.m, est2.m, places=2)
 
-    @unittest.skip('not clear what this means')
-    def _test_symmetric_estimate(self, di_est, p_est):
-
-        estimator = di_est(p_est()).symmetrized_estimate(self.X, self.Y)
-        self.assertAlmostEqual(estimator.d, estimator.r, places=2)
-
     def _test_multitraj_support(self, di_est, p_est):
         estimator = di_est(p_est()).estimate([self.X, self.X], [self.Y, self.Y])
 
@@ -134,7 +129,7 @@ class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         self.assertAlmostEqual(estimator.d, self.true_value_DI, places=1)
         self.assertAlmostEqual(estimator.r, 0., places=1)
 
-    @unittest.skip("Need to derive true result to compare to!")
+    @pytest.mark.skip("Need to derive true result to compare to!")
     def test_delayed(self):
         N = int(1e4)
         shift = 10
