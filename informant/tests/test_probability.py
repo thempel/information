@@ -19,6 +19,27 @@ class TestProbabilitySimple(unittest.TestCase):
         self.assertAlmostEqual(prob_est.pi_x.sum(), 1)
         self.assertAlmostEqual(prob_est.pi_y.sum(), 1)
 
+    def test_set_transition_matrices(self):
+
+        prob_est = informant.MSMProbabilities(msmlag=1)
+
+        # manually set transition matrices
+        tmat = np.array([[.9, .1], [.9, .1]])
+        prob_est.set_transition_matrices(tmat_x=tmat, tmat_y=tmat, tmat_xy=np.kron(tmat, tmat))
+
+        # do some estimation
+        A = np.random.randint(0, 2, 100)
+        B = np.random.randint(0, 2, 100)
+        est = informant.DirectedInformation(prob_est).estimate(A, B)
+
+        # check if still custom transition matrices
+        np.testing.assert_array_equal(prob_est.tmat_x, tmat)
+        np.testing.assert_array_equal(prob_est.tmat_y, tmat)
+        np.testing.assert_array_equal(prob_est.tmat_xy, np.kron(tmat, tmat))
+
+        self.assertAlmostEqual(est.d, 0)
+        self.assertAlmostEqual(est.r, 0)
+
     def test_CTWProb(self):
         prob_est = informant.CTWProbabilities(D=3)
         A = np.random.randint(0, 2, 100)
