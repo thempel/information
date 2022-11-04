@@ -1,5 +1,3 @@
-import unittest
-
 import pytest
 
 import informant
@@ -21,61 +19,59 @@ def compute_lattice(eps, n_steps=100000, n_maps=100):
 
     return x_n
 
-@pytest.skip('temporarily skipping, too slow', allow_module_level=True)
-class TestCoupledMapLattice(unittest.TestCase):
+class Data:
+    def __init__(self):
+        self.eps = 0.03
+        self.partition = 0.5
+        self.n_trails = 20
+
+        self.true_value_TE = 0.77**2 * np.square(self.eps) / np.log(2)
+
+@pytest.fixture(scope="module")
+def data() -> Data:
+    return Data()
+
+def test_TE_simple(data):
     """
-    Coupled map lattice as described by Schreiber, PRL, 2000.
+    Test if estimator matches true value as presented in Schreiber, PRL, 2000.
+    :return:
     """
-    @classmethod
-    def setUpClass(cls):
-        cls.eps = 0.03
-        cls.partition = 0.5
-        cls.n_trails = 20
 
-        cls.true_value_TE = 0.77**2 * np.square(cls.eps) / np.log(2)
+    d = 0.
+    for _ in range(data.n_trails):
+        x_n = compute_lattice(data.eps, n_steps=100000)
 
-    def test_TE_simple(self):
-        """
-        Test if estimator matches true value as presented in Schreiber, PRL, 2000.
-        :return:
-        """
+        X = (x_n[:, 44] > data.partition).astype(int)
+        Y = (x_n[:, 45] > data.partition).astype(int)
 
+        p = informant.MSMProbabilities(reversible=False, msmlag=1)
+        e = informant.TransferEntropy(p)
+        d += e.estimate(X, Y).d
 
-        d = 0.
-        for _ in range(self.n_trails):
-            x_n = compute_lattice(self.eps, n_steps=100000)
+    np.testing.assert_allclose(d/data.n_trails, data.true_value_TE, rtol=.15)
 
-            X = (x_n[:, 44] > self.partition).astype(int)
-            Y = (x_n[:, 45] > self.partition).astype(int)
+def test_TE_disconnected(data):
+    """
+    Test if estimator matches true value as presented in Schreiber, PRL, 2000.
+    Test case: single transition matrices are connected,
+    combinatorial state (2, 2) is disconnected.
+    :return:
+    """
 
-            p = informant.MSMProbabilities(reversible=False, msmlag=1)
-            e = informant.TransferEntropy(p)
-            d += e.estimate(X, Y).d
+    d = 0.
 
-        self.assertAlmostEqual(d/self.n_trails * 1e3, self.true_value_TE * 1e3, places=1)
+    for _ in range(data.n_trails):
+        x_n = compute_lattice(data.eps, n_steps=100000)
 
-    def test_TE_disconnected(self):
-        """
-        Test if estimator matches true value as presented in Schreiber, PRL, 2000.
-        Test case: single transition matrices are connected,
-        combinatorial state (2, 2) is disconnected.
-        :return:
-        """
+        X = (x_n[:, 44] > data.partition).astype(int)
+        Y = (x_n[:, 45] > data.partition).astype(int)
 
-        d = 0.
+        X[100:110] = 2
+        Y[200:213] = 2
+        X[-6:] = 2
+        Y[-6:] = 2
+        p = informant.MSMProbabilities(reversible=False, msmlag=1)
+        e = informant.TransferEntropy(p)
+        d += e.estimate(X, Y).d
 
-        for _ in range(self.n_trails):
-            x_n = compute_lattice(self.eps, n_steps=100000)
-
-            X = (x_n[:, 44] > self.partition).astype(int)
-            Y = (x_n[:, 45] > self.partition).astype(int)
-
-            X[100:110] = 2
-            Y[200:213] = 2
-            X[-6:] = 2
-            Y[-6:] = 2
-            p = informant.MSMProbabilities(reversible=False, msmlag=1)
-            e = informant.TransferEntropy(p)
-            d += e.estimate(X, Y).d
-
-        self.assertAlmostEqual(d/self.n_trails * 1e3, self.true_value_TE * 1e3, places=1)
+    np.testing.assert_allclose(d/data.n_trails, data.true_value_TE, rtol=.15)

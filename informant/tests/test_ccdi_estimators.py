@@ -1,37 +1,18 @@
-import unittest
+import pytest
+from numpy.testing import assert_almost_equal, assert_, assert_array_less
+
 import informant
 import numpy as np
-import six
-import itertools
-from utils import GenerateTestMatrix
 from deeptime.markov.msm import MarkovStateModel
 
-class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
-    """
-    Simple and cross-over channel tests. Directed information can be computed analytically.
-    Class sets up a simple binary channel with cross-overs and delay.
-    """
 
-    di_estimators = (informant.CausallyConditionedDI, informant.CausallyConditionedDIJiaoI3,
-                     informant.CausallyConditionedDIJiaoI4)
-    p_estimators = (informant.MSMProbabilities, )
-    default_test_grid = [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)]
-    params = {
-        '_test_simple': default_test_grid,
-        '_test_simple_multiconditionals': default_test_grid,
-        '_test_simple_multiprocessing': default_test_grid,
-        '_test_simple_raises_disconnectedXW': default_test_grid,
-        '_test_proxy': default_test_grid,
-        '_test_cascade': default_test_grid
-    }
+class SimpleData:
+    def __init__(self):
+        self.A_binary = np.random.randint(0, 2, 5000)
+        self.B_binary = np.random.randint(0, 2, 5000)
 
-    @classmethod
-    def setUpClass(cls):
-        cls.A_binary = np.random.randint(0, 2, 5000)
-        cls.B_binary = np.random.randint(0, 2, 5000)
-
-        cls.A_nonbinary = np.random.randint(0, 3, 5000)
-        cls.B_nonbinary = np.random.randint(0, 4, 5000)
+        self.A_nonbinary = np.random.randint(0, 3, 5000)
+        self.B_nonbinary = np.random.randint(0, 4, 5000)
 
         p = 0.3
         eps = .2
@@ -43,90 +24,115 @@ class TestSimple(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
         Y = X.copy()
         Y[_errbits] = 1 - Y[_errbits]
 
-        cls.X = X[2:]
-        cls.Y = Y[1:-1]
+        self.X = X[2:]
+        self.Y = Y[1:-1]
 
         # proxy configuration: X -> Y -> Z
         _errbits = np.random.rand(N) < eps
         Z = Y.copy()
         Z[_errbits] = 1 - Z[_errbits]
-        cls.Z_proxy = Z[:-2]
+        self.Z_proxy = Z[:-2]
 
         # cascade configuration: X -> Y; X -> Z
         _errbits = np.random.rand(N) < eps
         Z = X.copy()
         Z[_errbits] = 1 - Z[_errbits]
 
-        cls.Z_cascade = Z[1:-1]
+        self.Z_cascade = Z[1:-1]
 
-    def _test_simple(self, di_est, p_est):
-        est = di_est(p_est())
-        est.estimate(self.A_nonbinary, self.B_nonbinary, self.A_binary)
+@pytest.fixture(scope="module")
+def simple_data() -> SimpleData:
+    return SimpleData()
 
-        self.assertAlmostEqual(est.causally_conditioned_di[0], 0, places=0)
 
-    def _test_simple_multiconditionals(self, di_est, p_est):
-        est = di_est(p_est())
-        est.estimate(self.A_binary, self.B_binary, [self.B_nonbinary, self.A_nonbinary])
 
-        self.assertAlmostEqual(est.causally_conditioned_di[0], 0, places=0)
+di_estimators = (informant.CausallyConditionedDI, informant.CausallyConditionedDIJiaoI3,
+                 informant.CausallyConditionedDIJiaoI4)
+p_estimators = (informant.MSMProbabilities, )
 
-    def _test_simple_multiprocessing(self, di_est, p_est):
-        est = di_est(p_est())
-        est.estimate(self.A_binary, self.B_binary, [self.B_nonbinary, self.A_nonbinary], n_jobs=2)
-        ccdi_multiproc = est.causally_conditioned_di
+@pytest.mark.parametrize('di_est', di_estimators)
+@pytest.mark.parametrize('p_est', p_estimators)
+def test_simple(simple_data, di_est, p_est):
+    est = di_est(p_est())
+    est.estimate(simple_data.A_nonbinary, simple_data.B_nonbinary, simple_data.A_binary)
 
-        est = di_est(p_est())
-        est.estimate(self.A_binary, self.B_binary, [self.B_nonbinary, self.A_nonbinary], n_jobs=1)
-        ccdi_singleproc = est.causally_conditioned_di
+    assert_almost_equal(est.causally_conditioned_di[0], 0, decimal=0)
 
-        np.testing.assert_array_equal(ccdi_multiproc, ccdi_singleproc)
 
-    def _test_simple_raises_disconnectedXW(self, di_est, p_est):
-        est = di_est(p_est())
+@pytest.mark.parametrize('di_est', di_estimators)
+@pytest.mark.parametrize('p_est', p_estimators)
+def test_simple_multiconditionals(simple_data, di_est, p_est):
+    est = di_est(p_est())
+    est.estimate(simple_data.A_binary, simple_data.B_binary, [simple_data.B_nonbinary, simple_data.A_nonbinary])
 
-        est.estimate(np.array([0, 1, 0, 1, 1]),
-                     np.array([0, 1, 0, 1, 0]),
-                     [np.array([0, 0, 0, 1, 1])])
+    assert_almost_equal(est.causally_conditioned_di[0], 0, decimal=0)
 
-        self.assertFalse(np.isfinite(est.causally_conditioned_di[0]))
+@pytest.mark.parametrize('di_est', di_estimators)
+@pytest.mark.parametrize('p_est', p_estimators)
+def test_simple_multiprocessing(simple_data, di_est, p_est):
+    est = di_est(p_est())
+    est.estimate(simple_data.A_binary, simple_data.B_binary, [simple_data.B_nonbinary, simple_data.A_nonbinary],
+                 n_jobs=2)
+    ccdi_multiproc = est.causally_conditioned_di
 
-    def _test_proxy(self, di_est, p_est):
-        # TODO:
-        # This is a non-Markovian system. Seems to work qualitatively. Find out why.
+    est = di_est(p_est())
+    est.estimate(simple_data.A_binary, simple_data.B_binary, [simple_data.B_nonbinary, simple_data.A_nonbinary],
+                 n_jobs=1)
+    ccdi_singleproc = est.causally_conditioned_di
 
-        # test if direct link is detected with causally cond entropy > 0
-        estimator = di_est(p_est())
-        estimator.estimate(self.X, self.Y, self.Z_proxy)
+    np.testing.assert_array_equal(ccdi_multiproc, ccdi_singleproc)
 
-        self.assertGreater(estimator.causally_conditioned_di[0], 0.)
+@pytest.mark.parametrize('di_est', di_estimators)
+@pytest.mark.parametrize('p_est', p_estimators)
+def test_simple_raises_disconnectedXW(di_est, p_est):
+    est = di_est(p_est())
 
-        # test if indirect link is detected with causally cond entropy ~ 0.
-        estimator = di_est(p_est())
-        estimator.estimate(self.X, self.Z_proxy, self.Y)
+    est.estimate(np.array([0, 1, 0, 1, 1]),
+                 np.array([0, 1, 0, 1, 0]),
+                 [np.array([0, 0, 0, 1, 1])])
 
-        self.assertAlmostEqual(estimator.causally_conditioned_di[0], 0., places=2)
+    assert_(not np.isfinite(est.causally_conditioned_di[0]))
 
-    def _test_cascade(self, di_est, p_est):
-        # test if direct link is detected with causally cond entropy > 0
-        estimator = di_est(p_est())
-        estimator.estimate(self.X, self.Y, self.Z_cascade)
+@pytest.mark.parametrize('di_est', di_estimators)
+@pytest.mark.parametrize('p_est', p_estimators)
+def test_proxy(simple_data, di_est, p_est):
+    # TODO:
+    # This is a non-Markovian system. Seems to work qualitatively. Find out why.
 
-        self.assertGreater(estimator.causally_conditioned_di, 0.)
+    # test if direct link is detected with causally cond entropy > 0
+    estimator = di_est(p_est())
+    estimator.estimate(simple_data.X, simple_data.Y, simple_data.Z_proxy)
 
-        # test if indirect link is detected with causally cond entropy ~ 0.
-        estimator = di_est(p_est())
-        estimator.estimate(self.Y, self.Z_cascade, self.X)
+    assert_array_less(0., estimator.causally_conditioned_di[0])
 
-        self.assertAlmostEqual(estimator.causally_conditioned_di[0], 0., places=2)
+    # test if indirect link is detected with causally cond entropy ~ 0.
+    estimator = di_est(p_est())
+    estimator.estimate(simple_data.X, simple_data.Z_proxy, simple_data.Y)
 
-    def test_compare_I4_I3(self):
+    assert_almost_equal(estimator.causally_conditioned_di[0], 0., decimal=2)
 
-        prob_est = informant.MSMProbabilities(msmlag=1)
-        est1 = informant.CausallyConditionedDIJiaoI3(prob_est)
-        est1.estimate(self.A_nonbinary, self.B_nonbinary, self.A_binary)
+@pytest.mark.parametrize('di_est', di_estimators)
+@pytest.mark.parametrize('p_est', p_estimators)
+def test_cascade(simple_data, di_est, p_est):
+    # test if direct link is detected with causally cond entropy > 0
+    estimator = di_est(p_est())
+    estimator.estimate(simple_data.X, simple_data.Y, simple_data.Z_cascade)
 
-        est2 = informant.CausallyConditionedDIJiaoI4(prob_est)
-        est2.estimate(self.A_nonbinary, self.B_nonbinary, self.A_binary)
+    assert_array_less(0, estimator.causally_conditioned_di)
 
-        self.assertAlmostEqual(est2.causally_conditioned_di[0], est1.causally_conditioned_di[0], places=1)
+    # test if indirect link is detected with causally cond entropy ~ 0.
+    estimator = di_est(p_est())
+    estimator.estimate(simple_data.Y, simple_data.Z_cascade, simple_data.X)
+
+    assert_almost_equal(estimator.causally_conditioned_di[0], 0., decimal=2)
+
+def test_compare_I4_I3(simple_data):
+
+    prob_est = informant.MSMProbabilities(msmlag=1)
+    est1 = informant.CausallyConditionedDIJiaoI3(prob_est)
+    est1.estimate(simple_data.A_nonbinary, simple_data.B_nonbinary, simple_data.A_binary)
+
+    est2 = informant.CausallyConditionedDIJiaoI4(prob_est)
+    est2.estimate(simple_data.A_nonbinary, simple_data.B_nonbinary, simple_data.A_binary)
+
+    assert_almost_equal(est2.causally_conditioned_di[0], est1.causally_conditioned_di[0], decimal=1)

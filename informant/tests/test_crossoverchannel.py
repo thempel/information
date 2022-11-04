@@ -14,14 +14,14 @@ def entropy1D(x):
 
 class TestCrossover(six.with_metaclass(GenerateTestMatrix, unittest.TestCase)):
     """
-    Cross-over channel test. Directed informant can be computed analytically.
+    Cross-over channel test. Directed information can be computed analytically.
     Class sets up a simple binary channel with cross-overs, no delay.
     """
 
     di_estimators = (informant.JiaoI4, informant.JiaoI3)
     all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy, informant.DirectedInformation)
-    p_estimators = (informant.MSMProbabilities, )
-                    #informant.CTWProbabilities) #TODO: activate again
+    p_estimators = (informant.MSMProbabilities,
+                    informant.CTWProbabilities)
 
     params = {
         '_test_simple': [dict(di_est=d, p_est=p) for d, p in itertools.product(di_estimators, p_estimators)],
