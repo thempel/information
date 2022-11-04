@@ -11,7 +11,9 @@ def discretize_residue_backbone_sidechains(topology_file,
                                            nstates=3,
                                            stride=1,
                                            exclude_terminal_residues=5,
-                                           periodic=True):
+                                           periodic=True,
+                                           show_progress=True):
+
     """
     Convenience function. Discretize backbone and sidechain motion of every
     residue into n states; keep everything in a dictionary to be processed
@@ -24,13 +26,14 @@ def discretize_residue_backbone_sidechains(topology_file,
     :param stride: stride for loading the data (caution, this defines the output discrete trajectory timestep)
     :param exclude_terminal_residues: int; number of terminal residues to exclude from analysis
     :param periodic: Bool; uses periodic box? Passed e.g. to featurizer.add_backbone_torsions
+    :param show_progress: Bool; display tqdm progress bar
     :return: dict, dictionary of discrete trajectories sorted by residue
     """
     ref_traj = mdtraj.load(topology_file)
     residue_blocks = np.arange(exclude_terminal_residues, ref_traj.topology.n_residues - exclude_terminal_residues)
 
     dtrajs = dict()
-    for r1 in tqdm_notebook(residue_blocks):
+    for r1 in (tqdm_notebook if show_progress else lambda x: x)(residue_blocks):
 
         f = pyemma.coordinates.featurizer(topology_file)
         f.add_backbone_torsions(selstr='resid {}'.format(r1), cossin=True, periodic=periodic)

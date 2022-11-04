@@ -3,10 +3,12 @@ import numpy as np
 from informant import utils
 from copy import deepcopy
 
-class Estimator(object):
+
+class Estimator:
     """ Base class for directed information estimators
 
     """
+
     def __init__(self, probability_estimator):
         """
 
@@ -20,7 +22,7 @@ class Estimator(object):
 
     def estimate(self, A, B, traj_eq_reweighting=False):
         """
-        Convenience function for directed, reverse directed and mutual informant estimation.
+        Convenience function for directed, reverse directed and mutual information estimation.
         :param A: time series A
         :param B: time series B
         :traj_eq_reweighting : reweight trajectories according to stationary distribution
@@ -61,9 +63,9 @@ class Estimator(object):
 
     def symmetrized_estimate(self, A, B, traj_eq_reweighting=False):
         """
-        Ensures symmetric results for directed, reverse directed and mutual informant
+        Ensures symmetric results for directed, reverse directed and mutual information
         estimation, I(A->B)_rev = I(B->A). This is not the case for the original definition
-        of reverse informant by Jiao et al. and the results are to be understood qualitatively
+        of reverse information by Jiao et al. and the results are to be understood qualitatively
         only.
         :param A: time series A
         :param B: time series B
@@ -76,9 +78,9 @@ class Estimator(object):
         self.reverse_estimator.estimate(B, A, traj_eq_reweighting=traj_eq_reweighting)
         d_backward, r_backward, m_backward = self.reverse_estimator.d, self.reverse_estimator.r, self.reverse_estimator.m
 
-        self.d = (d_forward + r_backward)/2
-        self.r = (r_forward + d_backward)/2
-        self.m = (m_forward + m_backward)/2
+        self.d = (d_forward + r_backward) / 2
+        self.r = (r_forward + d_backward) / 2
+        self.m = (m_forward + m_backward) / 2
 
         return self
 
@@ -92,7 +94,7 @@ class Estimator(object):
 
     def stationary_estimate(self, X, Y):
         """
-        Directed informant estimation on discrete trajectories with Markov model
+        Directed information estimation on discrete trajectories with Markov model
         probability estimates.
 
         :param X: Time-series 1
@@ -117,17 +119,18 @@ class Estimator(object):
 
     def nonstationary_estimate(self, A, B):
         """
-        Directed informant estimation using non-stationary probability assignments.
+        Directed information estimation using non-stationary probability assignments.
         :param A: Time series 1
         :param B: Time series 2
         :return:
         """
-        di =  self._nonstationary_estimator(A, B)
+        di = self._nonstationary_estimator(A, B)
         return di
 
 
 class JiaoI4(Estimator):
     r"""Estimator for Jiao et al I4 with CTW and MSM probabilities"""
+
     def __init__(self, probability_estimator):
         super(JiaoI4, self).__init__(probability_estimator)
 
@@ -135,8 +138,8 @@ class JiaoI4(Estimator):
         """
         Original estimator I4 from Jiao et al. Original docstring:
 
-        Function `compute_DI_MI' calculates the directed informant I(X^n-->
-        Y^n), mutual informant I(X^n; Y^n) and reverse directed informant I(Y^{n-1}-->X^n)
+        Function `compute_DI_MI' calculates the directed information I(X^n-->
+        Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
         for any positive integer n smaller than the length of X and Y.
 
         X and Y: two input sequences;
@@ -166,17 +169,15 @@ class JiaoI4(Estimator):
             _x = utils.relabel_dtrajs(_X)
             _y = utils.relabel_dtrajs(_Y)
 
-
             Nx_subset = (np.unique(_x).max() + 1).astype(int)
             Ny_subset = (np.unique(_y).max() + 1).astype(int)
             n_data = len(_x)
             if len(set(_x)) == 1 or len(set(_x)) == 1:
-                #print('nothing to see here')
+                # print('nothing to see here')
                 dis[n] = 0.
                 continue
 
-
-            # mapp the data pair (X,Y) into a single variable taking value with
+            # map the data pair (X,Y) into a single variable taking value with
             # alphabet size |X||Y|
             XY = _x + Nx_subset * _y
 
@@ -193,15 +194,16 @@ class JiaoI4(Estimator):
                     px_xy[i_x, :] = px_xy[i_x, :] + pxy[i_x + j * Nx_subset, :]
 
             # %calculate P(y|x,X^{i-1},Y^{i-1})
-            #temp = np.tile(px_xy, (Nx, 1))
-            #py_x_xy = pxy / temp
+            # temp = np.tile(px_xy, (Nx, 1))
+            # py_x_xy = pxy / temp
 
             temp_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
             temp_MI = np.zeros(_x.shape[0] - self.p_estimator.D)
             temp_rev_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
             for iy in range(Ny_subset):
                 for ix in range(Nx_subset):
-                    temp_DI = temp_DI + pxy[ix + iy * Nx_subset] * np.log2(pxy[ix + iy * Nx_subset] / (py[iy] * px_xy[ix]))
+                    temp_DI = temp_DI + pxy[ix + iy * Nx_subset] * np.log2(
+                        pxy[ix + iy * Nx_subset] / (py[iy] * px_xy[ix]))
                     # temp_DI=temp_DI + pxy(ix+(iy-1)*Nx,:).     *log2(pxy(ix+(iy-1)*Nx,:). / (py(iy,:).*  px_xy(ix,:)));
             dis[n] = np.mean(temp_DI)
 
@@ -209,13 +211,13 @@ class JiaoI4(Estimator):
 
     def _stationary_estimator(self, x_lagged, y_lagged):
         """
-        Implementation of directed informant estimator I4 from [1] using Markov model
+        Implementation of directed information estimator I4 from [1] using Markov model
         probability estimates.
 
         [1] Jiao et al, Universal Estimation of Directed Information, 2013.
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
-        :return: directed informant, reverse directed informant, mutual informant
+        :return: directed information, reverse directed information, mutual information
         """
 
         tmat_x = self.p_estimator.tmat_x
@@ -224,12 +226,11 @@ class JiaoI4(Estimator):
 
         pi_xy = self.p_estimator.pi_xy
 
-        pi_dep = np.zeros((self.Nx  * self.Ny))
+        pi_dep = np.zeros((self.Nx * self.Ny))
         pi_dep[self.p_estimator.active_set_xy] = pi_xy
 
         full2active = -1 * np.ones(self.Nx * self.Ny, dtype=int)
         full2active[self.p_estimator.active_set_xy] = np.arange(len(self.p_estimator.active_set_xy))
-
 
         di = 0.
         for xi, xim1, yi, yim1 in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny), range(self.Ny)]):
@@ -239,7 +240,8 @@ class JiaoI4(Estimator):
             if p_xi_yi_given_xim1_yim1 == 0:
                 continue
 
-            p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
+            p_xi_given_xim1_yim1 = np.sum(
+                [tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
 
             di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * \
                   np.log2(p_xi_yi_given_xim1_yim1 / (tmat_y[yim1, yi] * p_xi_given_xim1_yim1))
@@ -248,6 +250,7 @@ class JiaoI4(Estimator):
 
 class JiaoI3(Estimator):
     r"""Estimator for Jiao et al I3 with CTW and MSM probabilities"""
+
     def __init__(self, probability_estimator):
         """
         Implementation I3 estimator by Jiao et al.
@@ -261,8 +264,8 @@ class JiaoI3(Estimator):
         CAUTION: ONLY IMPLEMENTED AS REFERENCE, should be thoroughly tested.
         Original docstring:
 
-        Function `compute_DI_MI' calculates the directed informant I(X^n-->
-        Y^n), mutual informant I(X^n; Y^n) and reverse directed informant I(Y^{n-1}-->X^n)
+        Function `compute_DI_MI' calculates the directed information I(X^n-->
+        Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
         for any positive integer n smaller than the length of X and Y.
 
         X and Y: two input sequences;
@@ -293,15 +296,13 @@ class JiaoI3(Estimator):
             _x = utils.relabel_dtrajs(_X)
             _y = utils.relabel_dtrajs(_Y)
 
-
             Nx_subset = (np.unique(_x).max() + 1).astype(int)
             Ny_subset = (np.unique(_y).max() + 1).astype(int)
             n_data = len(_x)
             if len(set(_x)) == 1 or len(set(_x)) == 1:
-                #print('nothing to see here')
+                # print('nothing to see here')
                 dis[n], rdis[n], mis[n] = 0., 0., 0.
                 continue
-
 
             # mapp the data pair (X,Y) into a single variable taking value with
             # alphabet size |X||Y|
@@ -326,9 +327,9 @@ class JiaoI3(Estimator):
             temp_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
             t = np.arange(py_x_xy.shape[1], dtype=int)
             for iy in range(Ny_subset):
-                    temp_DI = temp_DI + py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, t] * \
-                                        np.log2(py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, t] /\
-                                                py[iy])
+                temp_DI = temp_DI + py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, t] * \
+                          np.log2(py_x_xy[_x[self.p_estimator.D:] + Nx_subset * iy, t] / \
+                                  py[iy])
 
             dis[n] = np.mean(temp_DI)
 
@@ -336,14 +337,14 @@ class JiaoI3(Estimator):
 
     def _stationary_estimator(self, x_lagged, y_lagged):
         """
-        Implementation of directed informant estimator I3 from [1] using Markov model
+        Implementation of directed information estimator I3 from [1] using Markov model
         probability estimates.
         NOTE: This equals the direct estimation of DI.
 
         [1] Jiao et al, Universal Estimation of Directed Information, 2013.
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
-        :return: directed informant, reverse directed informant, mutual informant
+        :return: directed information, reverse directed information, mutual information
         """
 
         tmat_x = self.p_estimator.tmat_x
@@ -352,12 +353,11 @@ class JiaoI3(Estimator):
 
         pi_xy = self.p_estimator.pi_xy
 
-        pi_dep = np.zeros((self.Nx  * self.Ny))
+        pi_dep = np.zeros((self.Nx * self.Ny))
         pi_dep[self.p_estimator.active_set_xy] = pi_xy
 
         full2active = -1 * np.ones(self.Nx * self.Ny, dtype=int)
         full2active[self.p_estimator.active_set_xy] = np.arange(len(self.p_estimator.active_set_xy))
-
 
         di, rdi, mi = 0., 0., 0.
         for xi, xim1, yi, yim1 in itertools.product(*[range(self.Nx), range(self.Nx), range(self.Ny), range(self.Ny)]):
@@ -367,7 +367,8 @@ class JiaoI3(Estimator):
             if p_xi_yi_given_xim1_yim1 == 0:
                 continue
 
-            p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
+            p_xi_given_xim1_yim1 = np.sum(
+                [tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
             p_yi_given_xi_xim1_yim1 = p_xi_yi_given_xim1_yim1 / p_xi_given_xim1_yim1
 
             di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * \
@@ -378,6 +379,7 @@ class JiaoI3(Estimator):
 
 class DirectedInformation(Estimator):
     r"""Estimator for definition of DI with MSM probabilities"""
+
     def __init__(self, probability_estimator):
         """
         Implementation of original definition of directed information
@@ -396,7 +398,7 @@ class DirectedInformation(Estimator):
         [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
-        :return: directed informant, reverse directed informant, mutual informant
+        :return: directed information, reverse directed information, mutual information
         """
 
         tmat_x = self.p_estimator.tmat_x
@@ -405,7 +407,7 @@ class DirectedInformation(Estimator):
 
         pi_xy = self.p_estimator.pi_xy
 
-        pi_dep = np.zeros((self.Nx  * self.Ny))
+        pi_dep = np.zeros((self.Nx * self.Ny))
         pi_dep[self.p_estimator.active_set_xy] = pi_xy
 
         full2active = -1 * np.ones(self.Nx * self.Ny, dtype=int)
@@ -419,7 +421,8 @@ class DirectedInformation(Estimator):
             if p_xi_yi_given_xim1_yim1 == 0:
                 continue
 
-            p_xi_given_xim1_yim1 = np.sum([tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
+            p_xi_given_xim1_yim1 = np.sum(
+                [tmat_xy[full2active[xim1 + self.Nx * yim1], full2active[xi + self.Nx * _y]] for _y in range(self.Ny)])
             p_yi_given_xi_xim1_yim1 = p_xi_yi_given_xim1_yim1 / p_xi_given_xim1_yim1
 
             # di += pi_dep[xim1 + self.Nx * yim1] * p_xi_yi_given_xim1_yim1 * p_yi_given_xi_xim1_yim1 * \
@@ -430,8 +433,10 @@ class DirectedInformation(Estimator):
 
         return di
 
+
 class TransferEntropy(Estimator):
     r"""Estimator for Schreiber, PRL, 2000"""
+
     def __init__(self, probability_estimator):
         """
         Implementation transfer entropy estimator by Schreiber, PRL, 2000
@@ -449,7 +454,7 @@ class TransferEntropy(Estimator):
 
         pi_xy = self.p_estimator.pi_xy
 
-        pi_dep = np.zeros((self.Nx  * self.Ny))
+        pi_dep = np.zeros((self.Nx * self.Ny))
         pi_dep[self.p_estimator.active_set_xy] = pi_xy
 
         full2active = -1 * np.ones(self.Nx * self.Ny, dtype=int)
@@ -460,18 +465,20 @@ class TransferEntropy(Estimator):
             for i_n in range(self.Nx):
                 for j_np1 in range(self.Ny):
                     if i_n + self.Nx * j_n in self.p_estimator.active_set_xy:
-                        p_jnp1_given_in_jn = np.array([tmat_xy[full2active[i_n + self.Nx*j_n],
+                        p_jnp1_given_in_jn = np.array([tmat_xy[full2active[i_n + self.Nx * j_n],
                                                                full2active[i_np1 + self.Nx * j_np1]]
                                                        for i_np1 in range(self.Nx)
-                                                       if i_np1 + self.Nx * j_np1 in self.p_estimator.active_set_xy]).sum()
+                                                       if
+                                                       i_np1 + self.Nx * j_np1 in self.p_estimator.active_set_xy]).sum()
                         if p_jnp1_given_in_jn > 1e-16:
-                            d += pi_dep[i_n + self.Nx  * j_n] * p_jnp1_given_in_jn * np.log2(p_jnp1_given_in_jn /
-                                                                                             tmat_y[j_n, j_np1])
+                            d += pi_dep[i_n + self.Nx * j_n] * p_jnp1_given_in_jn * np.log2(p_jnp1_given_in_jn /
+                                                                                            tmat_y[j_n, j_np1])
         return d
 
 
-class MutualInfoStationaryDistribution():
+class MutualInfoStationaryDistribution:
     r"""Estimator for Schreiber, PRL, 2000"""
+
     def __init__(self, probability_estimator):
         """
         Implementation mutual information (as described by Schreiber, PRL, 2000)
@@ -484,7 +491,7 @@ class MutualInfoStationaryDistribution():
 
     def estimate(self, A, B):
         """
-        Convenience function for mutual informant estimation.
+        Convenience function for mutual information estimation.
         :param A: time series A
         :param B: time series B
         :return: self
@@ -506,21 +513,22 @@ class MutualInfoStationaryDistribution():
         m = 0.
         for n1, p1 in enumerate(self.p_estimator.pi_x):
             for n2, p2 in enumerate(self.p_estimator.pi_y):
-                if pi_dep[n1 + self.Nx*n2] > 0:
-                    m += pi_dep[n1 + self.Nx*n2] * np.log2(pi_dep[n1 + self.Nx*n2] / (p1 * p2))
+                if pi_dep[n1 + self.Nx * n2] > 0:
+                    m += pi_dep[n1 + self.Nx * n2] * np.log2(pi_dep[n1 + self.Nx * n2] / (p1 * p2))
 
         self.m = m
         return self
 
 
-class MultiEstimator(object):
+class MultiEstimator:
     """ Base class for directed information estimators with multiple processes
 
     """
+
     def __init__(self, probability_estimator):
         """
 
-        :param probability_estimator: informant.ProbabilityEstimator class
+        :param probability_estimator: information.ProbabilityEstimator class
         """
         self.p_estimator = probability_estimator
 
@@ -558,7 +566,6 @@ class MultiEstimator(object):
         self.Ny = np.unique(np.concatenate(B)).max() + 1
 
         self.causally_conditioned_di = np.zeros(len(W_))
-
 
         if self.p_estimator.is_stationary_estimate:
             if not traj_eq_reweighting:
@@ -608,7 +615,7 @@ class MultiEstimator(object):
 
     def stationary_estimate(self, W, X, Y):
         """
-        Directed informant estimation on discrete trajectories with Markov model
+        Directed information estimation on discrete trajectories with Markov model
         probability estimates.
         :param W: Conditinal time-series
         :param X: Time-series 1
@@ -647,11 +654,13 @@ class MultiEstimator(object):
     def nonstationary_estimate(self, A, B):
         raise NotImplementedError('Not implemented.')
 
+
 class CausallyConditionedDI(MultiEstimator):
     r"""
     Estimator for causally condited directed information as described by Quinn et al 2011
     with I3 estimator by Jiao et al
     """
+
     def __init__(self, probability_estimator):
         super(CausallyConditionedDI, self).__init__(probability_estimator)
 
@@ -680,11 +689,13 @@ class CausallyConditionedDI(MultiEstimator):
 
         return di_xw2y.d - di_w2y.d
 
+
 class CausallyConditionedDIJiaoI3(MultiEstimator):
     r"""
     Estimator for causally condited directed information as described by Quinn et al 2011
     with I3 estimator by Jiao et al
     """
+
     def __init__(self, probability_estimator):
         super(CausallyConditionedDIJiaoI3, self).__init__(probability_estimator)
 
@@ -721,6 +732,7 @@ class CausallyConditionedDIJiaoI4(MultiEstimator):
     Estimator for causally condited directed information as described by Quinn et al 2011
     with I4 estimator by Jiao et al
     """
+
     def __init__(self, probability_estimator):
         super(CausallyConditionedDIJiaoI4, self).__init__(probability_estimator)
 
@@ -756,6 +768,7 @@ class CausallyConditionedTE(MultiEstimator):
     r"""
     Estimator for causally condited transfer entropy analogously to Quinn et al 2011
     """
+
     def __init__(self, probability_estimator):
         super(CausallyConditionedTE, self).__init__(probability_estimator)
 

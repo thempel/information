@@ -1,3 +1,4 @@
+import deeptime.markov.tools.estimation
 import numpy as np
 from deeptime.markov import TransitionCountEstimator
 from deeptime.markov.msm import MaximumLikelihoodMSM
@@ -5,7 +6,16 @@ from deeptime.markov.tools.analysis import stationary_distribution
 from informant import utils
 
 
-def get_transition_matrix(dtrajs, lag, reversible, **kwargs):
+def requires_estimated(f):
+
+    def wrapper(self, *args, **kwargs):
+        if not self._estimated:
+            raise RuntimeError('Have to estimate before stationary distribution can be computed.')
+        return f(self, *args, **kwargs)
+
+    return wrapper
+
+def estimate_transition_matrix(dtrajs, lag, reversible, **kwargs):
     """
     convenience function for computing transition matrix from descrete time-series
     :param dtrajs: (list of) np.ndarray, time-series of descrete data
@@ -19,6 +29,39 @@ def get_transition_matrix(dtrajs, lag, reversible, **kwargs):
     transition_probability_model = MaximumLikelihoodMSM(reversible=reversible, **kwargs).fit_fetch(count_model_largest)
 
     return transition_probability_model.transition_matrix, count_model.connected_sets(sort_by_population=True)[0]
+
+class MSMProbabilitiesTransitionModel:
+
+    def __init__(self, data, lag, reversible, user_tmat=None, ck_estimate=False, **kw):
+        if not isinstance(data, list):
+            data = [data]
+        if user_tmat is None:
+            if not ck_estimate:
+                self._tmat, self._active_set = estimate_transition_matrix(data, lag, reversible, **kw)
+            else:
+                _tmat, self._active_set = estimate_transition_matrix(data, 1, reversible, **kw)
+                self._tmat = np.linalg.matrix_power(_tmat, lag)
+        else:
+            if not ck_estimate:
+                self._tmat = user_tmat
+            else:
+                self._tmat = np.linalg.matrix_power(user_tmat, lag)
+            self._active_set = np.arange(len(user_tmat))
+        self._pi = None
+
+    @property
+    def pi(self):
+        if self._pi is None:
+            self._pi = stationary_distribution(self._tmat)
+        return self._pi
+
+    @property
+    def tmat(self):
+        return self._tmat
+
+    @property
+    def active_set(self):
+        return self._active_set
 
 
 class MSMProbabilities:
@@ -38,16 +81,20 @@ class MSMProbabilities:
 
         self.is_stationary_estimate = True
 
-        self.tmat_x, self.tmat_y, self.tmat_xy = None, None, None
-        self.active_set_xy = None
-        self._pi_x, self._pi_y, self._pi_xy = None, None, None
-
-        self._user_tmat_x, self._user_tmat_y, self._user_tmat_xy = False, False, False
+        self._user_tmat_x, self._user_tmat_y, self._user_tmat_xy = None, None, None
+        self._transition_model_x, self._transition_model_y, self._transition_model_xy = None, None, None
         self.msmkwargs = None
 
-        self._estimated = False
+        self._estimated = False # TODO: _estimated -> is_estimated
 
         self._ignore_no_obs = True
+
+    @staticmethod
+    def _assert_shapes(tmat_x, tmat_y, tmat_xy):
+        if not tmat_x.shape[0] * tmat_y.shape[0] == tmat_xy.shape[0]:
+            raise NotImplementedError('Combined model is not showing all combinatorial states.' +
+                                  f'x: {tmat_x.shape[0]}, y:{tmat_y.shape[0]}, ' +
+                                  f'xy: {tmat_xy.shape[0]}')
 
     def estimate(self, X, Y, **kwargs):
         """
@@ -63,43 +110,45 @@ class MSMProbabilities:
         if not isinstance(Y, list): Y = [Y]
 
         Nx = np.unique(np.concatenate(X)).max() + 1
-        Ny = np.unique(np.concatenate(Y)).max() + 1
 
-        if not self.tmat_ck_estimate:
-            if not self._user_tmat_x:
-                self.tmat_x, _ = get_transition_matrix(X, self.msmlag, self.reversible, **kwargs)
+        self._transition_model_x = MSMProbabilitiesTransitionModel(X,
+                                                                   self.msmlag, self.reversible,
+                                                                   ck_estimate=self.tmat_ck_estimate,
+                                                                   user_tmat=self._user_tmat_x)
+        self._transition_model_y = MSMProbabilitiesTransitionModel(Y,
+                                                                   self.msmlag, self.reversible,
+                                                                   ck_estimate=self.tmat_ck_estimate,
+                                                                   user_tmat=self._user_tmat_y)
+        self._transition_model_xy = MSMProbabilitiesTransitionModel([_x + Nx * _y for _x, _y in zip(X, Y)],
+                                                                    self.msmlag, self.reversible,
+                                                                    ck_estimate=self.tmat_ck_estimate,
+                                                                    user_tmat=self._user_tmat_xy)
 
-            if not self._user_tmat_y:
-                self.tmat_y, _ = get_transition_matrix(Y, self.msmlag, self.reversible, **kwargs)
-
-            if not self._user_tmat_xy:
-                self.tmat_xy, self.active_set_xy = get_transition_matrix(
-                    [_x + Nx * _y for _x, _y in zip(X, Y)], self.msmlag, self.reversible, **kwargs)
-
-        else:
-            if not self._user_tmat_x:
-                _tmat_x, _ = get_transition_matrix(X, 1, self.reversible, **kwargs)
-                self.tmat_x = np.linalg.matrix_power(_tmat_x, self.msmlag)
-
-            if not self._user_tmat_y:
-                _tmat_y, _ = get_transition_matrix(Y, 1, self.reversible, **kwargs)
-                self.tmat_y = np.linalg.matrix_power(_tmat_y, self.msmlag)
-
-            if not self._user_tmat_xy:
-                # assumes that active set doesn't decay with time
-                _tmat_xy, self.active_set_xy = get_transition_matrix(
-                    [_x + Nx * _y for _x, _y in zip(X, Y)], 1, self.reversible, **kwargs)
-
-                self.tmat_xy = np.linalg.matrix_power(_tmat_xy, self.msmlag)
-
-        if not self.tmat_x.shape[0] * self.tmat_y.shape[0] == self.tmat_xy.shape[0]:
-            if not self._ignore_no_obs:
-                raise NotImplementedError('Combined model is not showing all combinatorial states.' +
-                                          f'x: {self.tmat_x.shape[0]}, y:{self.tmat_y.shape[0]}, ' +
-                                          f'xy: {self.tmat_xy.shape[0]}')
+        if not self._ignore_no_obs:
+            self._assert_shapes(self._transition_model_x.tmat, self._transition_model_y.tmat, self._transition_model_xy.tmat)
 
         self._estimated = True
         return self
+
+    @property
+    @requires_estimated
+    def tmat_x(self):
+        return self._user_tmat_x if self._user_tmat_x is not None else self._transition_model_x.tmat
+
+    @property
+    @requires_estimated
+    def tmat_y(self):
+        return self._user_tmat_y if self._user_tmat_y is not None else self._transition_model_y.tmat
+
+    @property
+    @requires_estimated
+    def tmat_xy(self):
+        return self._user_tmat_xy if self._user_tmat_xy is not None else self._transition_model_xy.tmat
+
+    @property
+    @requires_estimated
+    def active_set_xy(self):
+        return self._transition_model_xy.active_set
 
     def set_transition_matrices(self, tmat_x=None, tmat_y=None, tmat_xy=None):
         """
@@ -118,52 +167,35 @@ class MSMProbabilities:
             print('WARNING: User-defined matrices will be matrix powered (tmat_ck_estimate=True).')
 
         if tmat_x is not None:
-            self.tmat_x = np.linalg.matrix_power(tmat_x, self.msmlag if self.tmat_ck_estimate else 1)
-            self._user_tmat_x = True
+            self._user_tmat_x = np.linalg.matrix_power(tmat_x, self.msmlag if self.tmat_ck_estimate else 1)
         if tmat_y is not None:
-            self.tmat_y = np.linalg.matrix_power(tmat_y, self.msmlag if self.tmat_ck_estimate else 1)
-            self._user_tmat_y = True
+            self._user_tmat_y = np.linalg.matrix_power(tmat_y, self.msmlag if self.tmat_ck_estimate else 1)
         if tmat_xy is not None:
-            self.tmat_xy = np.linalg.matrix_power(tmat_xy, self.msmlag if self.tmat_ck_estimate else 1)
-            self._user_tmat_xy = True
+            self._user_tmat_xy = np.linalg.matrix_power(tmat_xy, self.msmlag if self.tmat_ck_estimate else 1)
+            assert deeptime.markov.tools.estimation.is_connected(self._user_tmat_xy)
 
-        if (tmat_x is not None) and (tmat_y is not None) and (tmat_xy is not None):
-            if not self.tmat_x.shape[0] * self.tmat_y.shape[0] == self.tmat_xy.shape[0]:
-                raise NotImplementedError('Combined model is not showing all combinatorial states. Auto-'
-                                          'computation will save connected set.')
-            self._estimated = True
-
+        if not any((x is None for x in (tmat_x, tmat_y, tmat_xy))):
+            self._assert_shapes(tmat_x, tmat_y, tmat_xy)
+        self._estimated = True
         return self
 
     @property
+    @requires_estimated
     def pi_x(self):
-        if not self._estimated:
-            raise RuntimeError('Have to estimate before stationary distribution can be computed.')
-
-        if self._pi_x is None:
-            self._pi_x = stationary_distribution(self.tmat_x)
-
-        return self._pi_x
+        assert self._transition_model_x is not None
+        return self._transition_model_x.pi
 
     @property
+    @requires_estimated
     def pi_y(self):
-        if not self._estimated:
-            raise RuntimeError('Have to estimate before stationary distribution can be computed.')
-
-        if self._pi_y is None:
-            self._pi_y = stationary_distribution(self.tmat_y)
-
-        return self._pi_y
+        assert self._transition_model_y is not None
+        return self._transition_model_y.pi
 
     @property
+    @requires_estimated
     def pi_xy(self):
-        if not self._estimated:
-            raise RuntimeError('Have to estimate before stationary distribution can be computed.')
-
-        if self._pi_xy is None:
-            self._pi_xy = stationary_distribution(self.tmat_xy)
-
-        return self._pi_xy
+        assert self._transition_model_xy is not None
+        return self._transition_model_xy.pi
 
 
 class CTWProbabilities:
