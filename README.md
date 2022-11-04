@@ -80,7 +80,7 @@ dtrajs = informant.md.discretize_residue_backbone_sidechains(
          tica_lag
          )
 te = informant.md.compute_inter_residue_transfer_entropy(
-     dtrajs_dictionary,
+     dtrajs,
      msmlag
      )
 informant.plots.plot_directed_links(ref_trajectory, te)

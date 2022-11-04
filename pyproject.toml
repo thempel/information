@@ -1,0 +1,31 @@
+[project]
+name = "informant"
+readme = "README.md"
+description = "Minimal package containing estimators for mutual and directed informant with MSM probabilities."
+keywords = [
+    "markov-model", "time-series-analysis", "transfer-entropy"
+]
+authors = [{name='Tim Hempel'}]
+version = "0.1"
+
+requires-python = ">= 3.7"
+dependencies = [
+    'numpy',
+    'deeptime',
+    'tqdm',
+    'pathos']
+
+[project.urls]
+repository = "https://github.com/thempel/information/"
+
+[project.optional-dependencies]
+plotting = ['matplotlib']
+md = ['pyemma']
+
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "toml"
+]
+#build-backend = "setuptools.build_meta"

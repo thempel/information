@@ -1,11 +1,12 @@
 from setuptools import setup
+import toml
+pyproject = toml.load("pyproject.toml")
 
-setup(name='informant',
-      version='0.1',
-      description='Minimal package containing estimators for mutual and directed informant with MSM probabilities',
-      url='https://github.com/markovmodel/information.git',
+setup(name=pyproject["project"]["name"],
+      version=pyproject["project"]["version"],
+      description=pyproject["project"]["description"],
+      url=pyproject["project"]["urls"]["repository"],
       packages=['informant'],
       zip_safe=False,
-      install_requires=['numpy', 'deeptime', 'tqdm', 'six', 'pathos'],
-      test_suite='py.test',
-      tests_require=['pytest'])
+      install_requires=pyproject["project"]["dependencies"],
+      )

@@ -1,0 +1,16 @@
+[report]
+exclude_lines =
+    @plotting_function
+    pragma: no cover
+omit =
+    # omit setup.py
+    */**/setup.py
+    # omit test directory
+    informant/tests/*
+
+[run]
+omit =
+    # omit setup.py
+    */**/setup.py
+    # omit test directory
+    informant/tests/*
