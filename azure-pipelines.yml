@@ -38,10 +38,4 @@ steps:
     codeCoverageTool: 'cobertura' # Options: cobertura, jaCoCo
     summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
 
-- task: Bash@3
-    inputs:
-      targetType: 'inline'
-      script: |
-        bash <(curl -s https://codecov.io/bash) -t $CODECOV_TOKEN
-    env:
-      CODECOV_TOKEN: $(CODECOV_TOKEN)
+- bash: bash <(curl -s https://codecov.io/bash) -t $(CODECOV_TOKEN)
