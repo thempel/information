@@ -35,7 +35,8 @@ def co_channel() -> CoChannel:
 di_estimators = (informant.JiaoI4, informant.JiaoI3)
 all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy, informant.DirectedInformation)
 p_estimators = (informant.MSMProbabilities,
-                informant.CTWProbabilities)
+                #informant.CTWProbabilities
+                )
 
 def test_verysimple(co_channel):
     estimator = informant.DirectedInformation(informant.MSMProbabilities())

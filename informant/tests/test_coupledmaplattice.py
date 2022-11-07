@@ -31,6 +31,7 @@ class Data:
 def data() -> Data:
     return Data()
 
+@pytest.mark.skip('too slow ATM')
 def test_TE_simple(data):
     """
     Test if estimator matches true value as presented in Schreiber, PRL, 2000.
@@ -50,6 +51,7 @@ def test_TE_simple(data):
 
     np.testing.assert_allclose(d/data.n_trails, data.true_value_TE, rtol=.15)
 
+@pytest.mark.skip('too slow ATM')
 def test_TE_disconnected(data):
     """
     Test if estimator matches true value as presented in Schreiber, PRL, 2000.
