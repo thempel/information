@@ -136,32 +136,35 @@ class JiaoI4(Estimator):
 
     def _nonstationary_estimator(self, X, Y):
         """
-        Original estimator I4 from Jiao et al. Original docstring:
+        CAUTION: ONLY IMPLEMENTED AS REFERENCE, should be thoroughly tested.
 
-        Function `compute_DI_MI' calculates the directed information I(X^n-->
-        Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
-        for any positive integer n smaller than the length of X and Y.
-
-        X and Y: two input sequences;
-        Nx:  the size of alphabet of X, assuming X and Y have the same size of
-        alphabets;
-        D:  the maximum depth of the context tree used in basic CTW algorithm,
-        for references please see F. Willems, Y. Shtarkov and T. Tjalkens, 'The
-        Context-Tree Weighting Method: Basic Properties', IEEE Transactions on
-        Information Theory, 653-664, May 1995.
-        alg:  indicates one of the four possible estimators proposed in J.
-        Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
+        Python implementation of estimator I4 that was proposed by
+        J. Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
         Estimation of Directed Information', http://arxiv.org/abs/1201.2334.
-        Users can indicate strings 'E1','E2','E3' and 'E4' for corresponding
-        estimators.
-        start_ratio: indicates how large initial proportion of input data should be ignored when displaying
-        the estimated results, for example, if start_ratio = 0.2, then the output DI
-        only contains the estimate of I(X^n \to Y^n) for n larger than
-        length(X)/5.
+
+        This code is based on the matlab code presented by the authors published at
+        https://github.com/EEthinker/Universal_directed_information
+        which was licensed under the MIT License:
+
+        Copyright 2017 EEthinker
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+        documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+        the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+        and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in all copies or substantial portions
+        of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+        TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+        THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+        CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+        DEALINGS IN THE SOFTWARE.
 
         :param X: time series 1
         :param Y: time series 2
-        :return:
+        :return: directed information estimate
         """
         dis = np.zeros(len(X))
         for n, (_X, _Y) in enumerate(zip(X, Y)):
@@ -173,17 +176,11 @@ class JiaoI4(Estimator):
             Ny_subset = (np.unique(_y).max() + 1).astype(int)
             n_data = len(_x)
             if len(set(_x)) == 1 or len(set(_x)) == 1:
-                # print('nothing to see here')
                 dis[n] = 0.
                 continue
 
-            # map the data pair (X,Y) into a single variable taking value with
-            # alphabet size |X||Y|
-            XY = _x + Nx_subset * _y
-
             # Calculate the CTW probability assignment
             pxy = self.p_estimator.pxy[n]
-            px = self.p_estimator.px[n]
             py = self.p_estimator.py[n]
 
             # % px_xy is a Nx times n_data matrix, calculating p(x_i|x^{i-1},y^{i-1})
@@ -193,18 +190,11 @@ class JiaoI4(Estimator):
                 for j in range(1, Ny_subset):
                     px_xy[i_x, :] = px_xy[i_x, :] + pxy[i_x + j * Nx_subset, :]
 
-            # %calculate P(y|x,X^{i-1},Y^{i-1})
-            # temp = np.tile(px_xy, (Nx, 1))
-            # py_x_xy = pxy / temp
-
             temp_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
-            temp_MI = np.zeros(_x.shape[0] - self.p_estimator.D)
-            temp_rev_DI = np.zeros(_x.shape[0] - self.p_estimator.D)
             for iy in range(Ny_subset):
                 for ix in range(Nx_subset):
                     temp_DI = temp_DI + pxy[ix + iy * Nx_subset] * np.log2(
                         pxy[ix + iy * Nx_subset] / (py[iy] * px_xy[ix]))
-                    # temp_DI=temp_DI + pxy(ix+(iy-1)*Nx,:).     *log2(pxy(ix+(iy-1)*Nx,:). / (py(iy,:).*  px_xy(ix,:)));
             dis[n] = np.mean(temp_DI)
 
         return dis.mean()
@@ -220,7 +210,6 @@ class JiaoI4(Estimator):
         :return: directed information, reverse directed information, mutual information
         """
 
-        tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
 
@@ -254,40 +243,40 @@ class JiaoI3(Estimator):
     def __init__(self, probability_estimator):
         """
         Implementation I3 estimator by Jiao et al.
-        CAUTION: ONLY IMPLEMENTED AS REFERENCE, should be thoroughly tested.
         """
         super(JiaoI3, self).__init__(probability_estimator)
 
     def _nonstationary_estimator(self, X, Y):
         """
-        Original estimator I3 by Jiao et al.
         CAUTION: ONLY IMPLEMENTED AS REFERENCE, should be thoroughly tested.
-        Original docstring:
 
-        Function `compute_DI_MI' calculates the directed information I(X^n-->
-        Y^n), mutual information I(X^n; Y^n) and reverse directed information I(Y^{n-1}-->X^n)
-        for any positive integer n smaller than the length of X and Y.
-
-        X and Y: two input sequences;
-        Nx:  the size of alphabet of X, assuming X and Y have the same size of
-        alphabets;
-        D:  the maximum depth of the context tree used in basic CTW algorithm,
-        for references please see F. Willems, Y. Shtarkov and T. Tjalkens, 'The
-        Context-Tree Weighting Method: Basic Properties', IEEE Transactions on
-        Information Theory, 653-664, May 1995.
-        alg:  indicates one of the four possible estimators proposed in J.
-        Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
+        Python implementation of estimator I3 that was proposed by
+        J. Jiao. H. Permuter, L. Zhao, Y.-H. Kim and T. Weissman, 'Universal
         Estimation of Directed Information', http://arxiv.org/abs/1201.2334.
-        Users can indicate strings 'E1','E2','E3' and 'E4' for corresponding
-        estimators.
-        start_ratio: indicates how large initial proportion of input data should be ignored when displaying
-        the estimated results, for example, if start_ratio = 0.2, then the output DI
-        only contains the estimate of I(X^n \to Y^n) for n larger than
-        length(X)/5.
+
+        This code is based on the matlab code presented by the authors published at
+        https://github.com/EEthinker/Universal_directed_information
+        which was licensed under the MIT License:
+
+        Copyright 2017 EEthinker
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+        documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+        the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+        and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in all copies or substantial portions
+        of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+        TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+        THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+        CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+        DEALINGS IN THE SOFTWARE.
 
         :param X: time series 1
         :param Y: time series 2
-        :return:
+        :return: directed information estimate
         """
 
         dis, rdis, mis = np.zeros(len(X)), np.zeros(len(X)), np.zeros(len(X))
@@ -304,13 +293,8 @@ class JiaoI3(Estimator):
                 dis[n], rdis[n], mis[n] = 0., 0., 0.
                 continue
 
-            # mapp the data pair (X,Y) into a single variable taking value with
-            # alphabet size |X||Y|
-            XY = _x + Nx_subset * _y
-
             # Calculate the CTW probability assignment
             pxy = self.p_estimator.pxy[n]
-            px = self.p_estimator.px[n]
             py = self.p_estimator.py[n]
 
             # % px_xy is a Nx times n_data matrix, calculating p(x_i|x^{i-1},y^{i-1})
@@ -346,8 +330,6 @@ class JiaoI3(Estimator):
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
         :return: directed information, reverse directed information, mutual information
         """
-
-        tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
 
@@ -401,7 +383,6 @@ class DirectedInformation(Estimator):
         :return: directed information, reverse directed information, mutual information
         """
 
-        tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
 
@@ -448,7 +429,6 @@ class TransferEntropy(Estimator):
         raise NotImplementedError("Transfer entropy only implemented with MSM probabilities.")
 
     def _stationary_estimator(self, x_lagged, y_lagged):
-        tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
 
