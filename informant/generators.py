@@ -4,19 +4,18 @@ from tqdm import tqdm_notebook
 
 
 def glauber_dynamics(nspins, alpha=0.1, gamma=0.95, ratematrix=False, tau=1):
-    """
-        Implements Glauber's master equation variant of the (1D) Ising model with periodic boundary conditions
+    r"""
+    Implements Glauber's master equation variant of the (1D) Ising model with periodic boundary conditions
+    (J Math Phys 4 294 (1963); doi: 10.1063/1.1703954)
 
-        (J Math Phys 4 294 (1963); doi: 10.1063/1.1703954)
-        :param nspins: int; number of spins in model (Note: returns 2^nspins times 2^nspins matix)
-        :param alpha: float; basal spin flip-rate, defines time-scale (=0.1)
-        :param gamma: float; gamma is equal to tanh(\beta 2J) where J is the spin-spin coupling constant
+    :param nspins: int; number of spins in model (Note: returns 2^nspins times 2^nspins matix)
+    :param alpha: float; basal spin flip-rate, defines time-scale (=0.1)
+    :param gamma: float; gamma is equal to tanh(\beta 2J) where J is the spin-spin coupling constant
         in a corresponding Ising model, and \beta is the inverse temperature.
-        :param ratematrix: bool; return rate matrix
-        :param tau: float; time discretization for transition matrix
+    :param ratematrix: bool; return rate matrix
+    :param tau: float; time discretization for transition matrix
 
-        :returns
-        transition matrix, (rate matrix)
+    :returns: transition matrix, (rate matrix)
     """
     s = np.array([-1, 1])
     r = np.zeros((2 ** nspins, 2 ** nspins))
@@ -49,22 +48,21 @@ def glauber_dynamics(nspins, alpha=0.1, gamma=0.95, ratematrix=False, tau=1):
 
 
 def driven_glauber_dynamics(nspins, alpha=0.1, gamma=0.95, ratematrix=False, driver=0, alpha_driver=None, tau=1):
-    """
-        Implements Glauber's master equation variant of the (1D) Ising model with periodic boundary conditions
-        with a driving spin that is not affected by its neighbors.
+    r"""
+    Implements Glauber's master equation variant of the (1D) Ising model with periodic boundary conditions
+    with a driving spin that is not affected by its neighbors.
+    (J Math Phys 4 294 (1963); doi: 10.1063/1.1703954)
 
-        (J Math Phys 4 294 (1963); doi: 10.1063/1.1703954)
-        :param nspins: int; number of spins in model (Note: returns 2^nspins times 2^nspins matix)
-        :param alpha: float; basal spin flip-rate, defines time-scale (=0.1)
-        :param gamma: float; gamma is equal to tanh(\beta 2J) where J is the spin-spin coupling constant
+    :param nspins: int; number of spins in model (Note: returns 2^nspins times 2^nspins matix)
+    :param alpha: float; basal spin flip-rate, defines time-scale (=0.1)
+    :param gamma: float; gamma is equal to tanh(\beta 2J) where J is the spin-spin coupling constant
         in a corresponding Ising model, and \beta is the inverse temperature.
-        :param ratematrix: bool; return rate matrix
-        :param tau: float; time discretization for transition matrix
-        :param driver: int; identity of driving spin
-        :param alpha_driver: float, alpha parameter (basal flipping rate) of driving spin
+    :param ratematrix: bool; return rate matrix
+    :param tau: float; time discretization for transition matrix
+    :param driver: int; identity of driving spin
+    :param alpha_driver: float, alpha parameter (basal flipping rate) of driving spin
 
-        :returns
-        transition matrix, (rate matrix)
+    :returns: transition matrix, (rate matrix)
     """
     if alpha_driver is None:
         alpha_driver = alpha
@@ -101,11 +99,12 @@ def driven_glauber_dynamics(nspins, alpha=0.1, gamma=0.95, ratematrix=False, dri
 
 def gen_ising_traj(nspins, nsteps, alpha=.1, gamma=0.95, driver=0, show_progress=True, alpha_driver=None, tau=1, driven=False):
     """
-    Generate trajectory of driven ising system
+    Generate trajectory of driven Ising system.
+
     :param nspins: int; number of spins in model (Note: returns 2^nspins times 2^nspins matix)
     :param alpha: float; basal spin flip-rate, defines time-scale (=0.1)
     :param gamma: float; gamma is equal to tanh(\beta 2J) where J is the spin-spin coupling constant
-    in a corresponding Ising model, and \beta is the inverse temperature.
+        in a corresponding Ising model, and \beta is the inverse temperature.
     :param tau: float; time discretization for transition matrix
     :param driver: int; identity of driving spin
     :param alpha_driver: float, alpha parameter (basal flipping rate) of driving spin

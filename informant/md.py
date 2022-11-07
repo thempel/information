@@ -54,6 +54,7 @@ def compute_inter_residue_transfer_entropy(dtrajs_dictionary, msmlag, reversible
     """
     Convenience function for computing transfer entropy between each pair of
     residues in a dataset.
+
     :param dtrajs_dictionary: dict; Discrete trajectories stored in a dictionary.
     :param msmlag: int; lag time for MSM estimation (in strided steps)
     :param reversible: Bool; MSM estimation (caution, reversible estimation not recommended)

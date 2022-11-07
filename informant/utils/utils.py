@@ -11,15 +11,13 @@ def lag_observations(observations, lag, stride=1):
 
     Function copied from markovmodel/bhmm, version 0.6.2
 
-    Parameters
-    ----------
-    observations : list of int arrays
+    :param observations: list of int arrays
         observation trajectories
-    lag : int
+    :param lag: int
         lag time
-    stride : int, default=1
+    :param stride: int, default=1
         will return only one trajectory for every stride. Use this for Bayesian analysis.
-
+    :return: time-lagged and strided observations
     """
     obsnew = []
     for obs in observations:
@@ -31,6 +29,13 @@ def lag_observations(observations, lag, stride=1):
 
 
 def relabel_dtrajs(X):
+    """
+    Convenience function to re-label state definitions in cases where some states are not part of the data.
+    E.g. [0, 2, 0, 2, 3] -> [0, 1, 0, 1, 2]
+
+    :param X: np.ndarray, dtype int; discrete trajectory
+    :return: re-labeled discrete trajectory
+    """
     if np.unique(X).max() + 1 > len(set(X)):
         mapper = np.zeros(np.unique(X).max() + 1) - 1
         mapper[np.unique(X)] = list(range(np.unique(X).shape[0]))
@@ -41,7 +46,15 @@ def relabel_dtrajs(X):
     return _x
 
 def ensure_dtraj_format(A, B, W=None):
+    """
+    Ensure correct format for a discrete trajectory.
+    Optionally checks if conditional data W fits the time-series A and B.
 
+    :param A: np.ndarray, dtype int; discrete trajectory A
+    :param B: np.ndarray, dtype int; discrete trajectory B
+    :param W: optional; np.ndarray, dtype int; discrete trajectory of conditional data
+    :return: formatted discrete trajectories in the order of the input
+    """
     if not isinstance(A, list): A = [A]
     if not isinstance(B, list): B = [B]
     assert isinstance(A[0], np.ndarray)
@@ -69,13 +82,14 @@ def ensure_dtraj_format(A, B, W=None):
 
 def reweight_trajectories(A, B, p, size=None):
     """
-    Reweights trajectories by drawing starting states according to a
+    Reweighs trajectories by drawing starting states according to a
     distribution of combinatorial states.
+
     :param A: time-series 1
     :param B: time-series 2
     :param p: combinatorial state distribution
     :param size: number of trajectories to return
-    :return: A, B reweighted
+    :return: A, B reweighed
     """
 
     from itertools import product
@@ -124,9 +138,8 @@ def multivariate_mutual_info(p_x, p_y, p_w, p_xy, p_xw, p_yw, p_xyw):
     :param p_xw: np.array, unconditional joint probabilities of x, w
     :param p_yw: np.array, unconditional joint probabilities of y, w
     :param p_xyw: np.array, unconditional joint probabilities of x, y, w
-    :return:
+    :return: mutual information estimate
     """
-
 
     Nx = len(p_x)
     Ny = len(p_y)
@@ -146,14 +159,16 @@ def multivariate_mutual_info(p_x, p_y, p_w, p_xy, p_xw, p_yw, p_xyw):
                                                 (p1 * p2 * p3 * p_xyw[i_xyw]))
     return m
 
+
 def reverse_estimate(forward_estimator, A, B):
     """
     Return backward estimator for the forward estimator from A -> B
     This function will return and fit the estimator from B -> A.
-    :param forward_estimator:
-    :param A:
-    :param B:
-    :return:
+
+    :param forward_estimator: Child of information.Estimator
+    :param A: time-series A
+    :param B: time-series B
+    :return: reversed estimator
     """
     # TODO: this is ugly, however deepcopy does not reset class.
     p_estimator_args = [forward_estimator.p_estimator.__getattribute__(a) for a in

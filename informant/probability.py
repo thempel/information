@@ -7,6 +7,9 @@ from informant import utils
 
 
 def requires_estimated(f):
+    """
+    Decorator to check if an instance of probability estimator is already estimated.
+    """
 
     def wrapper(self, *args, **kwargs):
         if not self._estimated:
@@ -15,9 +18,11 @@ def requires_estimated(f):
 
     return wrapper
 
+
 def estimate_transition_matrix(dtrajs, lag, reversible, **kwargs):
     """
     convenience function for computing transition matrix from descrete time-series
+
     :param dtrajs: (list of) np.ndarray, time-series of descrete data
     :param lag: int, msm lag time
     :param reversible: bool, use reversible or non-reversible msm estimator
@@ -30,9 +35,24 @@ def estimate_transition_matrix(dtrajs, lag, reversible, **kwargs):
 
     return transition_probability_model.transition_matrix, count_model.connected_sets(sort_by_population=True)[0]
 
+
 class MSMProbabilitiesTransitionModel:
+    """
+    Wrapper for transition models
+    """
 
     def __init__(self, data, lag, reversible, user_tmat=None, ck_estimate=False, **kw):
+        """
+        Wrap transition model into object.
+        :param data: (list of) np.array(dtype=int); time-series data
+        :param lag: int; MSM lag time
+        :param reversible: bool; use a reversible estimate
+        :param user_tmat: None or np.ndarray; if supplied, this is used as a transition matrix instead of a new
+            estimate from the data.
+        :param ck_estimate: bool; whether to compute a transition matrix from matrix exponentiation (experimental)
+        :param kw: keyword arguments passed to informant.estimate_transition_matrix
+
+        """
         if not isinstance(data, list):
             data = [data]
         if user_tmat is None:
@@ -51,16 +71,27 @@ class MSMProbabilitiesTransitionModel:
 
     @property
     def pi(self):
+        """
+        :return: stationary probability vector
+        """
         if self._pi is None:
             self._pi = stationary_distribution(self._tmat)
         return self._pi
 
     @property
     def tmat(self):
+        """
+        :return: Transition matrix
+        """
         return self._tmat
 
     @property
     def active_set(self):
+        """
+        Largest connected set of transition matrix, used as active set of the MSM
+
+        :return: active set of transition matrix
+        """
         return self._active_set
 
 
@@ -71,6 +102,7 @@ class MSMProbabilities:
     def __init__(self, msmlag=1, reversible=False, tmat_ck_estimate=False):
         """
         Computes conditional transition probabilities from MSMs with PyEMMA.
+
         :param msmlag: MSM lag time (int)
         :param reversible: reversible estimate (bool)
         :param tmat_ck_estimate: Estimate higher lag time transition matrices from CK-equation
@@ -99,6 +131,7 @@ class MSMProbabilities:
     def estimate(self, X, Y, **kwargs):
         """
         Estimates MSM probabilities from two time series separately and in combined.
+
         :param X: time-series 1
         :param Y: time-series 2
         :param kwargs: keyword arguments passed to pyemma.msm.estimate_markov_model()
@@ -133,27 +166,40 @@ class MSMProbabilities:
     @property
     @requires_estimated
     def tmat_x(self):
+        """
+        :return: Transition matrix of time-series X
+        """
         return self._user_tmat_x if self._user_tmat_x is not None else self._transition_model_x.tmat
 
     @property
     @requires_estimated
     def tmat_y(self):
+        """
+        :return: Transition matrix of time-series Y
+        """
         return self._user_tmat_y if self._user_tmat_y is not None else self._transition_model_y.tmat
 
     @property
     @requires_estimated
     def tmat_xy(self):
+        """
+        :return: Transition matrix of combined time-series X, Y
+        """
         return self._user_tmat_xy if self._user_tmat_xy is not None else self._transition_model_xy.tmat
 
     @property
     @requires_estimated
     def active_set_xy(self):
+        """
+        :return: Active set of transition matrix in combined X, Y space
+        """
         return self._transition_model_xy.active_set
 
     def set_transition_matrices(self, tmat_x=None, tmat_y=None, tmat_xy=None):
         """
         Fix transition matrices to user defined ones. Overwrites existing
         transition matrices. The ones that were not set here will be estimated with self.estimate.
+
         :param tmat_x: transition matrix for time series X
         :param tmat_y: transition matrix for time series Y
         :param tmat_xy: transition matrix for combinatorial time series
@@ -182,18 +228,27 @@ class MSMProbabilities:
     @property
     @requires_estimated
     def pi_x(self):
+        """
+        :return: stationary distribution of transition matrix of X
+        """
         assert self._transition_model_x is not None
         return self._transition_model_x.pi
 
     @property
     @requires_estimated
     def pi_y(self):
+        """
+        :return: stationary distribution of transition matrix of Y
+        """
         assert self._transition_model_y is not None
         return self._transition_model_y.pi
 
     @property
     @requires_estimated
     def pi_xy(self):
+        """
+        :return: stationary distribution of transition matrix of comined time-series X, Y
+        """
         assert self._transition_model_xy is not None
         return self._transition_model_xy.pi
 
@@ -240,6 +295,13 @@ class CTWProbabilities:
         self._estimated = False
 
     def estimate(self, X, Y):
+        """
+        Estimate non-stationary probabilities using CTW algorithm.
+
+        :param X: time-series X
+        :param Y: time-series Y
+        :return: self
+        """
         if not isinstance(X, list): X = [X]
         if not isinstance(Y, list): Y = [Y]
 

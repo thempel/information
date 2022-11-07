@@ -6,11 +6,11 @@ from copy import deepcopy
 
 class Estimator:
     """ Base class for directed information estimators
-
     """
 
     def __init__(self, probability_estimator):
         """
+        Estimator
 
         :param probability_estimator: informant.ProbabilityEstimator class
         """
@@ -23,6 +23,7 @@ class Estimator:
     def estimate(self, A, B, traj_eq_reweighting=False):
         """
         Convenience function for directed, reverse directed and mutual information estimation.
+
         :param A: time series A
         :param B: time series B
         :traj_eq_reweighting : reweight trajectories according to stationary distribution
@@ -67,6 +68,7 @@ class Estimator:
         estimation, I(A->B)_rev = I(B->A). This is not the case for the original definition
         of reverse information by Jiao et al. and the results are to be understood qualitatively
         only.
+
         :param A: time series A
         :param B: time series B
         :return: self
@@ -99,13 +101,12 @@ class Estimator:
 
         :param X: Time-series 1
         :param Y: Time-series 2
-        :return: di, rdi, mi
+        :return: estimated directed information
         """
         msmlag = self.p_estimator.msmlag
 
         tmat_x = self.p_estimator.tmat_x
         tmat_y = self.p_estimator.tmat_y
-        tmat_xy = self.p_estimator.tmat_xy
 
         assert self.Nx - 1 == tmat_x.shape[0] - 1 and np.unique(np.concatenate(X)).min() == 0
         assert self.Ny - 1 == tmat_y.shape[0] - 1 and np.unique(np.concatenate(Y)).min() == 0
@@ -120,9 +121,10 @@ class Estimator:
     def nonstationary_estimate(self, A, B):
         """
         Directed information estimation using non-stationary probability assignments.
+
         :param A: Time series 1
         :param B: Time series 2
-        :return:
+        :return: estimated directed information
         """
         di = self._nonstationary_estimator(A, B)
         return di
@@ -205,9 +207,10 @@ class JiaoI4(Estimator):
         probability estimates.
 
         [1] Jiao et al, Universal Estimation of Directed Information, 2013.
+
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
-        :return: directed information, reverse directed information, mutual information
+        :return: directed information estimate
         """
 
         tmat_y = self.p_estimator.tmat_y
@@ -326,9 +329,10 @@ class JiaoI3(Estimator):
         NOTE: This equals the direct estimation of DI.
 
         [1] Jiao et al, Universal Estimation of Directed Information, 2013.
+
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
-        :return: directed information, reverse directed information, mutual information
+        :return: directed information estimate
         """
         tmat_y = self.p_estimator.tmat_y
         tmat_xy = self.p_estimator.tmat_xy
@@ -378,9 +382,10 @@ class DirectedInformation(Estimator):
         probability estimates.
 
         [1] Quinn , Coleman, Kiyavash, Hatsopoulos. J Comput Neurosci 2011.
+
         :param x_lagged: List of binary trajectories 1 with time step msmlag.
         :param y_lagged: List of binary trajectories 2 with time step msmlag.
-        :return: directed information, reverse directed information, mutual information
+        :return: directed information estimate
         """
 
         tmat_y = self.p_estimator.tmat_y
@@ -472,6 +477,7 @@ class MutualInfoStationaryDistribution:
     def estimate(self, A, B):
         """
         Convenience function for mutual information estimation.
+
         :param A: time series A
         :param B: time series B
         :return: self
@@ -518,12 +524,12 @@ class MultiEstimator:
     def estimate(self, A, B, W_, traj_eq_reweighting=False, n_jobs=1):
         """
         Convenience function for causally conditioned directed information
+
         :param A: np.array or list of np.arrays of dtype int. time series A
         :param B: np.array or list of np.arrays of dtype int. time series B
-        :param W: np.array or list of np.arrays of dtype int. time series W, conditioned upon which DI is estimated
-        Can be either supplied in same format as A, B or a list of multiple conditional time series in this format.
-        :traj_eq_reweighting : reweight trajectories according to stationary distribution
-            only stationary estimates, experimental (not implemented)
+        :param W: np.array or list of np.arrays of dtype int. time series W, conditioned upon which DI is estimated.
+            Can be either supplied in same format as A, B or a list of multiple conditional time series in this format.
+        :param traj_eq_reweighting: reweigh trajectories according to stationary distribution only stationary estimates
         :return: self
         """
 
@@ -597,10 +603,11 @@ class MultiEstimator:
         """
         Directed information estimation on discrete trajectories with Markov model
         probability estimates.
+
         :param W: Conditinal time-series
         :param X: Time-series 1
         :param Y: Time-series 2
-        :return: di, rdi, mi
+        :return: directed information estimate
         """
         msmlag = self.p_estimator.msmlag
 
@@ -632,6 +639,7 @@ class MultiEstimator:
                                           prob_estimator_wy, prob_estimator_xwy)
 
     def nonstationary_estimate(self, A, B):
+        """Not implemented"""
         raise NotImplementedError('Not implemented.')
 
 

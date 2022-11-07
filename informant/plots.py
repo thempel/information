@@ -47,15 +47,16 @@ def plot_directed_links(ref_trajectory,
                         labels=['MI', 'TE', 'ccDI'],
                         figsize=(18, 9)):
     """
-    Convencience plot function for visualizing transfer entropy / directed information.
+    Convenience plot function for visualizing transfer entropy / directed information.
+
     :param ref_trajectory: mdtraj.Trajectory; reference for plotting residue numbers and secondary structure info
     :param te: dict; transfer entropy dictionary
     :param di_cc: dict, optional; causally conditioned directed information
     :param thres: float; multiplicity threshold for directionality
-    It is considered a directional link if either forward-TE > thres * backward-TE or vice versa.
+        It is considered a directional link if either forward-TE > thres * backward-TE or vice versa.
     :param thresm: float; Absolute threshold for plotting mutual information
     :param direct_link_thres: float; Threshold for directed links
-    A directional link is considered direct if there is no ccDI < direct_link_thres * max(forward-TE, backward-TE)
+        A directional link is considered direct if there is no ccDI < direct_link_thres * max(forward-TE, backward-TE)
     :param labels: list of str; plotting labels
     :return: matplotlib.ax instance
     """
