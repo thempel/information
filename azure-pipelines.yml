@@ -31,4 +31,4 @@ steps:
 
 - script: |
     nox
-  displayName: 'nox '
+  displayName: 'nox -- cov'
