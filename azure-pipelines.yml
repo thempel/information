@@ -38,8 +38,7 @@ steps:
     codeCoverageTool: 'cobertura' # Options: cobertura, jaCoCo
     summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
 
-
-- task: Bash@1
+- task: Bash@3
     inputs:
       targetType: 'inline'
       script: |
