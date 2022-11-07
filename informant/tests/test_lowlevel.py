@@ -1,12 +1,11 @@
 import numpy as np
 import itertools
 
-from numpy.testing import assert_almost_equal
-
+from numpy.testing import assert_almost_equal, assert_equal
 from informant.utils import multivariate_mutual_info, lag_observations
 
-def test_multivariate_mi_independent():
 
+def test_multivariate_mi_independent():
 
     pi_x = [.5, .5]
     pi_y = [.3, .7]
@@ -24,6 +23,7 @@ def test_multivariate_mi_independent():
     m = multivariate_mutual_info(pi_x, pi_y, pi_w, pi_xy, pi_xw, pi_yw, pi_xyw)
 
     assert_almost_equal(m, 0.)
+
 
 def test_multivariate_mi_dependent():
 
@@ -44,12 +44,13 @@ def test_multivariate_mi_dependent():
 
     assert_almost_equal(m, m_test)
 
-def test_lag_observations(self):
+
+def test_lag_observations():
     t = [np.arange(0, 100).astype(int)]
     tau = 3
     t_lagged_ref = [np.arange(n, 100, tau).astype(int) for n in range(tau)]
     t_lagged = lag_observations(t, tau)
-    self.assertEqual(len(t_lagged), len(t_lagged_ref))
-    self.assertEqual(len(t_lagged_ref[0]), len(t_lagged[0]))
+    assert_equal(len(t_lagged), len(t_lagged_ref))
+    assert_equal(len(t_lagged_ref[0]), len(t_lagged[0]))
     for a, b in zip(t_lagged, t_lagged_ref):
         np.testing.assert_array_equal(a, b)
