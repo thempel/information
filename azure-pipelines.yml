@@ -30,5 +30,15 @@ steps:
   displayName: 'install nox'
 
 - script: |
-    nox
-  displayName: 'nox -- cov'
+    nox -- cov
+  displayName: 'nox'
+
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: 'cobertura' # Options: cobertura, jaCoCo
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
+
+- bash:
+  curl -Os https://uploader.codecov.io/latest/linux/codecov
+  chmod +x codecov
+  ./codecov -t $(CODECOV_TOKEN)
