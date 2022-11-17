@@ -2,7 +2,7 @@
 [![codecov](https://codecov.io/gh/thempel/information/branch/master/graph/badge.svg?token=HJB1HETJB1)](https://codecov.io/gh/thempel/information)
 
 # `informant`
-## A python package for estimating directed information and transfer entropy
+## A python package for estimating directed information and transfer entropy with MSM probabilities
 ### Idea
 This package was intended to provide access to estimators for directed
 information, transfer entropy and mutual information between two time
