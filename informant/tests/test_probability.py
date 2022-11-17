@@ -49,6 +49,7 @@ def test_set_transition_matrices():
 
     assert_almost_equal(d, 0)
 
+
 def test_CTWProb():
     prob_est = informant.CTWProbabilities(D=3)
     A = np.random.randint(0, 2, 100)

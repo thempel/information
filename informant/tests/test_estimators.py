@@ -9,8 +9,8 @@ import itertools
 di_estimators = (informant.JiaoI4, informant.JiaoI3)
 all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy, informant.DirectedInformation)
 p_estimators = (informant.MSMProbabilities,
-                #informant.CTWProbabilities
-                ) #TODO: activate again
+                informant.CTWProbabilities
+                )
 ccdi_estimators = (informant.CausallyConditionedDI,
                    informant.CausallyConditionedDIJiaoI3,
                    informant.CausallyConditionedDIJiaoI4,
@@ -27,9 +27,11 @@ class SimpleData:
         self.A_nonbinary = np.random.randint(0, 3, 100000)
         self.B_nonbinary = np.random.randint(0, 4, 100000)
 
+
 @pytest.fixture(scope="module")
 def simple_data() -> SimpleData:
     return SimpleData()
+
 
 @pytest.mark.parametrize('di_est,p_est', possible_combinations)
 def test_binary(simple_data, di_est, p_est):
@@ -40,6 +42,7 @@ def test_binary(simple_data, di_est, p_est):
     assert_(estimator.m > 0)
     if not isinstance(estimator, (informant.TransferEntropy, informant.DirectedInformation)):
         assert_almost_equal(estimator.d + estimator.r, estimator.m, decimal=1)
+
 
 # TODO: should be tested with CTW, too, but seems disfunctional.
 @pytest.mark.parametrize('di_est', all_estimators)
@@ -55,9 +58,6 @@ def test_multistate(simple_data, di_est):
         assert_almost_equal(estimator.d + estimator.r, estimator.m, decimal=1)
 
 
-
-#'_test_causally_cond_simple': [dict(di_est=d) for d in ccdi_estimators]
-
 @pytest.mark.parametrize('di_est,p_est', possible_combinations)
 def test_symmetric_estimate(simple_data, di_est, p_est):
     A = simple_data.A_binary
@@ -69,7 +69,6 @@ def test_symmetric_estimate(simple_data, di_est, p_est):
     np.testing.assert_allclose(estimator_AB.r, estimator_BA.d, rtol=1e-2, atol=1e-3)
     np.testing.assert_allclose(estimator_AB.d, estimator_BA.r, rtol=1e-2, atol=1e-3)
     np.testing.assert_allclose(estimator_AB.m, estimator_BA.m, rtol=1e-2, atol=1e-3)
-
 
 
 def test_MSMInfoRew():
@@ -87,6 +86,7 @@ def test_MSMInfoRew():
 
     assert_almost_equal(estimator.d + estimator.r, estimator.m)
 
+
 def test_compare_I4_I3(simple_data):
     prob_est = informant.MSMProbabilities(msmlag=1)
 
@@ -99,6 +99,7 @@ def test_compare_I4_I3(simple_data):
     assert_almost_equal(est2.d, est1.d, decimal=1)
     assert_almost_equal(est2.r, est1.r, decimal=1)
     assert_almost_equal(est2.m, est1.m, decimal=1)
+
 
 @pytest.mark.parametrize('di_est', ccdi_estimators)
 def test_causally_cond_simple(simple_data, di_est):

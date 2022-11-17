@@ -40,15 +40,16 @@ class SimpleData:
 
         self.Z_cascade = Z[1:-1]
 
+
 @pytest.fixture(scope="module")
 def simple_data() -> SimpleData:
     return SimpleData()
 
 
-
 di_estimators = (informant.CausallyConditionedDI, informant.CausallyConditionedDIJiaoI3,
                  informant.CausallyConditionedDIJiaoI4)
 p_estimators = (informant.MSMProbabilities, )
+
 
 @pytest.mark.parametrize('di_est', di_estimators)
 @pytest.mark.parametrize('p_est', p_estimators)
@@ -67,6 +68,7 @@ def test_simple_multiconditionals(simple_data, di_est, p_est):
 
     assert_almost_equal(est.causally_conditioned_di[0], 0, decimal=0)
 
+
 @pytest.mark.parametrize('di_est', di_estimators)
 @pytest.mark.parametrize('p_est', p_estimators)
 def test_simple_multiprocessing(simple_data, di_est, p_est):
@@ -82,6 +84,7 @@ def test_simple_multiprocessing(simple_data, di_est, p_est):
 
     np.testing.assert_array_equal(ccdi_multiproc, ccdi_singleproc)
 
+
 @pytest.mark.parametrize('di_est', di_estimators)
 @pytest.mark.parametrize('p_est', p_estimators)
 def test_simple_raises_disconnectedXW(di_est, p_est):
@@ -92,6 +95,7 @@ def test_simple_raises_disconnectedXW(di_est, p_est):
                  [np.array([0, 0, 0, 1, 1])])
 
     assert_(not np.isfinite(est.causally_conditioned_di[0]))
+
 
 @pytest.mark.parametrize('di_est', di_estimators)
 @pytest.mark.parametrize('p_est', p_estimators)
@@ -111,6 +115,7 @@ def test_proxy(simple_data, di_est, p_est):
 
     assert_almost_equal(estimator.causally_conditioned_di[0], 0., decimal=2)
 
+
 @pytest.mark.parametrize('di_est', di_estimators)
 @pytest.mark.parametrize('p_est', p_estimators)
 def test_cascade(simple_data, di_est, p_est):
@@ -125,6 +130,7 @@ def test_cascade(simple_data, di_est, p_est):
     estimator.estimate(simple_data.Y, simple_data.Z_cascade, simple_data.X)
 
     assert_almost_equal(estimator.causally_conditioned_di[0], 0., decimal=2)
+
 
 def test_compare_I4_I3(simple_data):
 

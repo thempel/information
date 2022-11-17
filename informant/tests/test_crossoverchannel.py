@@ -28,15 +28,18 @@ class CoChannel:
     def entropy1D(x):
         return - x * np.log2(x) - (1 - x) * np.log2(1 - x)
 
+
 @pytest.fixture(scope="module")
 def co_channel() -> CoChannel:
     return CoChannel()
 
+
 di_estimators = (informant.JiaoI4, informant.JiaoI3)
 all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy, informant.DirectedInformation)
 p_estimators = (informant.MSMProbabilities,
-                #informant.CTWProbabilities
+                informant.CTWProbabilities
                 )
+
 
 def test_verysimple(co_channel):
     estimator = informant.DirectedInformation(informant.MSMProbabilities())
@@ -46,6 +49,7 @@ def test_verysimple(co_channel):
     assert_almost_equal(estimator.d + estimator.r, estimator.m, decimal=2)
     assert_almost_equal(estimator.d, co_channel.true_value_DI, decimal=1)
     assert_almost_equal(estimator.r, 0., decimal=1)
+
 
 @pytest.mark.parametrize('di_est', di_estimators)
 @pytest.mark.parametrize('p_est', p_estimators)
@@ -57,6 +61,7 @@ def test_simple(co_channel, di_est, p_est):
     assert_almost_equal(estimator.d + estimator.r, estimator.m, decimal=2)
     assert_almost_equal(estimator.d, co_channel.true_value_DI, decimal=1)
     assert_almost_equal(estimator.r, 0., decimal=1)
+
 
 @pytest.mark.parametrize('di_est', di_estimators)
 def test_polluted_state(co_channel, di_est):
@@ -92,6 +97,7 @@ def test_congruency(co_channel, di_est1, di_est2, p_est):
     assert_almost_equal(est1.r, est2.r, decimal=2)
     assert_almost_equal(est1.m, est2.m, decimal=2)
 
+
 @pytest.mark.parametrize('di_est', di_estimators)
 @pytest.mark.parametrize('p_est', p_estimators)
 def test_multitraj_support(co_channel, di_est, p_est):
@@ -100,6 +106,7 @@ def test_multitraj_support(co_channel, di_est, p_est):
     assert_almost_equal(estimator.d + estimator.r, estimator.m, decimal=2)
     assert_almost_equal(estimator.d, co_channel.true_value_DI, decimal=1)
     assert_almost_equal(estimator.r, 0., decimal=1)
+
 
 def test_MSMI4re(co_channel):
     """
@@ -129,6 +136,7 @@ def test_MSMI4re(co_channel):
     assert_almost_equal(estimator.d, co_channel.true_value_DI, decimal=1)
     assert_almost_equal(estimator.r, 0., decimal=1)
 
+
 @pytest.mark.skip("Need to derive true result to compare to!")
 def test_delayed():
     N = int(1e4)
@@ -154,6 +162,7 @@ def test_delayed():
     # TODO: derive relationship to delaytime and add actual value.
     assert_almost_equal(estimator.d, 0.008, decimal=1)
     assert_array_less(.1 * 0.008, estimator.r)
+
 
 def test_schreiber_MI(co_channel):
     prob_est = informant.MSMProbabilities()
