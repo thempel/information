@@ -1,4 +1,5 @@
 [![Build Status](https://dev.azure.com/timhempel/information/_apis/build/status/thempel.information?branchName=master)](https://dev.azure.com/timhempel/information/_build/latest?definitionId=2&branchName=master)
+[![codecov](https://codecov.io/gh/thempel/information/branch/master/graph/badge.svg?token=HJB1HETJB1)](https://codecov.io/gh/thempel/information)
 
 # `informant`
 ## A python package for estimating directed information and transfer entropy
