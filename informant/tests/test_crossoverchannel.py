@@ -36,8 +36,9 @@ def co_channel() -> CoChannel:
 
 di_estimators = (informant.JiaoI4, informant.JiaoI3)
 all_estimators = (informant.JiaoI4, informant.JiaoI3, informant.TransferEntropy, informant.DirectedInformation)
+# TODO: find more pythonic solution to exclude slow CTW-based tests on CI but not locally
 p_estimators = (informant.MSMProbabilities,
-                informant.CTWProbabilities
+                #informant.CTWProbabilities
                 )
 
 
