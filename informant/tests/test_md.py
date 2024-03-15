@@ -1,7 +1,8 @@
 import informant
 import mdshare
+import pytest
 
-
+@pytest.mark.xfail(reason="bug in pyemma featurizer")
 def test_integration_simple():
     topology_file = mdshare.fetch('pentapeptide-impl-solv.pdb', working_directory='data', show_progress=False)
     trajectory_files = mdshare.fetch('pentapeptide-00-500ns-impl-solv.xtc', working_directory='data',
